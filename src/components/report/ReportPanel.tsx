@@ -128,7 +128,8 @@ export function ReportPanel({ input }: ReportPanelProps) {
   // Once the waiting state is on screen, bring the report window into view: the reader watches it fill
   // without scrolling. (Calling it in the click handler loses the smooth scroll to the re-render.)
   useEffect(() => {
-    if (phase !== 'requesting') return;
+    // Again when the first text arrives: the window has its full height only then.
+    if (phase !== 'requesting' && phase !== 'streaming') return;
     reportSection.current?.scrollIntoView({
       behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth',
       block: 'start',
