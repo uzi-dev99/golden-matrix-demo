@@ -5,7 +5,7 @@ import { readdirSync, readFileSync, mkdtempSync, writeFileSync, rmSync } from 'n
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 
-const SECRETS = ['OPENROUTER_API_KEY', 'sk-or-', 'SESSION_SECRET', 'DEMO_PASSWORD'];
+const SECRETS = ['OPENROUTER_API_KEY', 'sk-or-', 'MINIMAX_API_KEY', 'SESSION_SECRET', 'DEMO_PASSWORD'];
 
 /** Returns one violation per secret found in a file under `dir` (recursively). */
 export function scan(dir) {

@@ -45,6 +45,25 @@ describe('openrouter', () => {
     await expect(it.next()).rejects.toMatchObject({ code: 'RATE_LIMITED', status: 429, retryable: false, message: expect.stringMatching(/cupo diario/) });
     expect(() => parseChunk(body)).toThrow(/cupo diario/);
   });
+  test('AC10 — a minimax/ model goes to the MiniMax API with its own key and never sees the OpenRouter key', async () => {
+    vi.stubEnv('OPENROUTER_API_KEY', 'or-key-not-real');
+    vi.stubEnv('MINIMAX_API_KEY', 'mm-key-not-real');
+    const f = vi.fn(async () => sseResponse(OK_STREAM));
+    for await (const ev of streamCompletion({ model: 'minimax/MiniMax-M3.1-Flash', system: 's', user: 'u' }, f as unknown as typeof fetch)) void ev;
+    const [url, init] = f.mock.calls[0] as unknown as [string, RequestInit];
+    expect(url).toBe('https://api.minimax.io/v1/chat/completions');
+    expect((init.headers as Record<string, string>).Authorization).toBe('Bearer mm-key-not-real');
+    expect(JSON.stringify(init)).not.toContain('or-key-not-real');
+    const body = JSON.parse(String(init.body));
+    expect(body.model).toBe('MiniMax-M3.1-Flash');
+    expect(body.reasoning).toBeUndefined();
+  });
+  test('AC11 — a MiniMax model is listed as paid, without asking the OpenRouter catalog for it', async () => {
+    __resetCatalogForTests();
+    const f = vi.fn(async () => new Response(JSON.stringify({ data: [] }), { status: 200 }));
+    const [m] = await listModels(['minimax/MiniMax-M3.1-Flash'], f as unknown as typeof fetch);
+    expect(m).toEqual({ id: 'minimax/MiniMax-M3.1-Flash', name: 'MiniMax: MiniMax-M3.1-Flash', free: false });
+  });
   test('AC10 — a reasoning delta is never content: it does not reach the client', () => {
     expect(parseChunk('{"choices":[{"delta":{"reasoning":"thinking"}}]}')).toBeNull();
     expect(parseChunk('{"choices":[{"delta":{"reasoning_content":"thinking"}}]}')).toBeNull();

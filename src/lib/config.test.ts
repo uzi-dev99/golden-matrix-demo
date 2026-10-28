@@ -18,6 +18,18 @@ describe('config', () => {
     vi.stubEnv('OPENROUTER_MODELS', ' a/b:free , c/d ,');
     expect(allowedModels()).toEqual(['a/b:free', 'c/d']);
   });
+  test('AC10 — models whose provider has no key are left out: MiniMax on the LAN, OpenRouter online', () => {
+    vi.stubEnv('OPENROUTER_MODELS', 'minimax/MiniMax-M3.1-Flash,openrouter/free');
+    vi.stubEnv('MINIMAX_API_KEY', '');
+    vi.stubEnv('OPENROUTER_API_KEY', 'x');
+    expect(allowedModels()).toEqual(['openrouter/free']);
+    vi.stubEnv('MINIMAX_API_KEY', 'y');
+    expect(defaultModel()).toBe('minimax/MiniMax-M3.1-Flash');
+    vi.stubEnv('OPENROUTER_API_KEY', '');
+    expect(allowedModels()).toEqual(['minimax/MiniMax-M3.1-Flash']);
+    vi.stubEnv('MINIMAX_API_KEY', '');
+    expect(allowedModels()).toEqual(['minimax/MiniMax-M3.1-Flash', 'openrouter/free']); // no key at all: clear error later
+  });
   test('D10 — an empty TRUSTED_PROXY_HOPS means the default, 0 is respected', () => {
     vi.stubEnv('TRUSTED_PROXY_HOPS', '');
     expect(trustedProxyHops()).toBe(1);

@@ -28,7 +28,7 @@ On a LAN over plain http (another machine opening `http://<server-ip>:3000`), se
 
 ## Configuration
 
-See `.env.example`. Default OpenRouter model: `nvidia/nemotron-3-ultra-550b-a55b:free`. The allow-list lives in `OPENROUTER_MODELS` (comma-separated); its first entry is the default. The API key is read only on the server and never sent to the browser. Report generation is rate limited per IP (`RATE_LIMIT_PER_HOUR`, in memory).
+See `.env.example`. Default OpenRouter model: `nvidia/nemotron-3-ultra-550b-a55b:free`. The allow-list lives in `OPENROUTER_MODELS` (comma-separated); its first usable entry is the default. Entries like `minimax/MiniMax-M3.1-Flash` go to MiniMax's own API when `MINIMAX_API_KEY` is set; a model whose provider has no key is left out, so the same list works online (OpenRouter only) and on a LAN run with MiniMax. The API keys are read only on the server and never sent to the browser. Report generation is rate limited per IP (`RATE_LIMIT_PER_HOUR`, in memory).
 
 ## Stack
 

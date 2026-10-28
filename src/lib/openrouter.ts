@@ -1,8 +1,9 @@
-import { openRouterKey, siteUrl, APP_NAME } from '@/lib/config';
+import { MINIMAX_PREFIX, minimaxKey, openRouterKey, siteUrl, APP_NAME } from '@/lib/config';
 import { createSseParser } from '@/lib/sse';
 import type { ErrorCode, ModelInfo } from '@/lib/types';
 
 const BASE = 'https://openrouter.ai/api/v1';
+const MINIMAX_BASE = 'https://api.minimax.io/v1';
 
 export interface Usage {
   promptTokens: number;
@@ -36,8 +37,8 @@ function dailyLimit(text: string | undefined): LlmError | null {
 }
 
 const HTTP_MESSAGES: Record<number, string> = {
-  401: 'La clave de OpenRouter no es válida.',
-  402: 'Crédito de OpenRouter agotado.',
+  401: 'La clave del proveedor del modelo no es válida.',
+  402: 'Crédito del proveedor del modelo agotado.',
   408: 'El modelo tardó demasiado en responder.',
   429: 'El modelo está limitado por el proveedor. Prueba otro modelo o espera un momento.',
 };
@@ -87,24 +88,23 @@ export async function* streamCompletion(
   args: { model: string; system: string; user: string; signal?: AbortSignal },
   fetchImpl: typeof fetch = fetch,
 ): AsyncGenerator<StreamEvent> {
-  const res = await fetchImpl(`${BASE}/chat/completions`, {
+  // MiniMax's own OpenAI-compatible API (its reasoning travels apart, in `reasoning_content`); OpenRouter otherwise.
+  const minimax = args.model.startsWith(MINIMAX_PREFIX);
+  const res = await fetchImpl(minimax ? `${MINIMAX_BASE}/chat/completions` : `${BASE}/chat/completions`, {
     method: 'POST',
     signal: args.signal,
-    headers: {
-      Authorization: `Bearer ${openRouterKey()}`,
-      'Content-Type': 'application/json',
-      'HTTP-Referer': siteUrl(),
-      'X-Title': APP_NAME,
-    },
+    headers: minimax
+      ? { Authorization: `Bearer ${minimaxKey()}`, 'Content-Type': 'application/json' }
+      : { Authorization: `Bearer ${openRouterKey()}`, 'Content-Type': 'application/json', 'HTTP-Referer': siteUrl(), 'X-Title': APP_NAME },
     body: JSON.stringify({
-      model: args.model,
+      model: minimax ? args.model.slice(MINIMAX_PREFIX.length) : args.model,
       stream: true,
       stream_options: { include_usage: true },
       max_tokens: 1800,
       temperature: 0.7,
       // A concrete model gets no reasoning (some providers leak it as content). A router such as
       // openrouter/free may pick a model where reasoning is mandatory: bound and exclude it there.
-      reasoning: args.model.startsWith('openrouter/') ? { effort: 'low', exclude: true } : { enabled: false },
+      ...(minimax ? {} : { reasoning: args.model.startsWith('openrouter/') ? { effort: 'low', exclude: true } : { enabled: false } }),
       messages: [
         { role: 'system', content: args.system },
         { role: 'user', content: args.user },
@@ -156,5 +156,12 @@ export async function listModels(allowed: string[], fetchImpl: typeof fetch = fe
       catalog = { at: Date.now() - CATALOG_TTL_MS + 60_000, byId: new Map() }; // retry in a minute
     }
   }
-  return allowed.map((id) => catalog?.byId.get(id) ?? { id, name: id, free: id.endsWith(':free') || id === 'openrouter/free' });
+  return allowed.map(
+    (id) =>
+      (id.startsWith(MINIMAX_PREFIX) ? { id, name: `MiniMax: ${id.slice(MINIMAX_PREFIX.length)}`, free: false } : catalog?.byId.get(id)) ?? {
+        id,
+        name: id,
+        free: id.endsWith(':free') || id === 'openrouter/free',
+      },
+  );
 }
