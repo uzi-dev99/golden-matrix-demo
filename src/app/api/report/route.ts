@@ -10,6 +10,9 @@ import { reportRequestSchema } from '@/lib/schemas';
 import { safeStream } from '@/lib/sse';
 import type { ReportEvent, ReportMeta } from '@/lib/types';
 
+/** Used once when the requested model fails or answers nothing before writing any text. */
+const FALLBACK_MODEL = 'openrouter/free';
+
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
@@ -38,11 +41,37 @@ export async function POST(req: Request) {
     }
     const prompt = buildPrompt(input, chart, options);
 
-    // Pull the first event before answering so provider errors (401/402/429) become real HTTP statuses.
-    const it = streamCompletion({ model, system: segmentsToText(prompt.system), user: segmentsToText(prompt.user), signal: req.signal });
-    let first: IteratorResult<StreamEvent>;
+    // Pull events up to the first text before answering, so provider errors (401/402/429) become real HTTP
+    // statuses and a failed or empty start can still switch to the fallback model.
+    const start = (m: string) => streamCompletion({ model: m, system: segmentsToText(prompt.system), user: segmentsToText(prompt.user), signal: req.signal });
+    const pullHead = async (it: AsyncGenerator<StreamEvent>) => {
+      const head: StreamEvent[] = [];
+      for (let n = await it.next(); !n.done; n = await it.next()) {
+        head.push(n.value);
+        if (n.value.type === 'delta' && n.value.text) break;
+      }
+      return head;
+    };
+    const canFallback = allowedModels().includes(FALLBACK_MODEL) && model !== FALLBACK_MODEL;
+    let it = start(model);
+    let head: StreamEvent[];
+    let usedFallback = false;
     try {
-      first = await it.next();
+      try {
+        head = await pullHead(it);
+      } catch (e) {
+        if (!(canFallback && e instanceof LlmError && e.retryable)) throw e;
+        await it.return?.(undefined); // the failed call leaves no stream open
+        usedFallback = true;
+        it = start(FALLBACK_MODEL); // the requested model is down: one try with the router before failing
+        head = await pullHead(it);
+      }
+      if (!usedFallback && canFallback && !head.some((ev) => ev.type === 'delta' && ev.text)) {
+        await it.return?.(undefined); // the discarded model leaves no stream open
+        usedFallback = true;
+        it = start(FALLBACK_MODEL);
+        head = await pullHead(it);
+      }
     } catch (e) {
       if (e instanceof LlmError) return err(e.code, e.message, e.status);
       if (e instanceof Error && /OPENROUTER_API_KEY/.test(e.message)) return err('LLM_ERROR', 'El servicio de IA no está configurado.', 503);
@@ -54,15 +83,20 @@ export async function POST(req: Request) {
         let text = '';
         let firstTokenMs: number | undefined;
         let usage: Extract<StreamEvent, { type: 'usage' }> | undefined;
+        let servedModel: string | undefined; // the model the provider says answered
         const handle = (ev: StreamEvent) => {
           if (ev.type === 'delta') {
             firstTokenMs ??= Date.now() - t0;
             text += ev.text;
+            servedModel = ev.servedModel ?? servedModel;
             safeStream(() => controller.enqueue(sse({ type: 'delta', text: ev.text })));
-          } else usage = ev;
+          } else {
+            usage = ev;
+            servedModel = ev.servedModel ?? servedModel;
+          }
         };
         try {
-          if (!first.done) handle(first.value);
+          head.forEach(handle);
           for (let n = await it.next(); !n.done; n = await it.next()) handle(n.value);
           if (!text.trim()) {
             // The provider spent the whole budget reasoning: there is no report to show, so it is an error, not a success.
@@ -72,7 +106,7 @@ export async function POST(req: Request) {
           const u = usage?.usage;
           const meta: ReportMeta = {
             model,
-            servedModel: usage?.servedModel,
+            servedModel: servedModel ?? (usedFallback ? FALLBACK_MODEL : undefined),
             latencyMs: Date.now() - t0,
             firstTokenMs,
             promptTokens: u?.promptTokens ?? prompt.estimatedTokens,

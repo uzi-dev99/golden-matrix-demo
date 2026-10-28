@@ -12,7 +12,7 @@ export interface Usage {
 }
 
 export type StreamEvent =
-  | { type: 'delta'; text: string }
+  | { type: 'delta'; text: string; servedModel?: string }
   | { type: 'usage'; usage: Usage; servedModel?: string; generationId?: string };
 
 export class LlmError extends Error {
@@ -20,6 +20,8 @@ export class LlmError extends Error {
     public code: ErrorCode,
     message: string,
     public status = 502,
+    /** False for key problems (401/402): another model would fail the same way. */
+    public retryable = true,
   ) {
     super(message);
   }
@@ -34,7 +36,12 @@ const HTTP_MESSAGES: Record<number, string> = {
 
 /** Maps a non-2xx OpenRouter answer to a stable error. The upstream body is never forwarded. */
 export function httpError(status: number): LlmError {
-  return new LlmError(status === 429 ? 'RATE_LIMITED' : 'LLM_ERROR', HTTP_MESSAGES[status] ?? 'El proveedor del modelo no respondió bien.', status === 429 ? 429 : 502);
+  return new LlmError(
+    status === 429 ? 'RATE_LIMITED' : 'LLM_ERROR',
+    HTTP_MESSAGES[status] ?? 'El proveedor del modelo no respondió bien.',
+    status === 429 ? 429 : 502,
+    status !== 401 && status !== 402,
+  );
 }
 
 /** Parses one `data:` payload. Returns null for [DONE] and for chunks that carry nothing to show. */
@@ -64,7 +71,8 @@ export function parseChunk(data: string): StreamEvent | null {
   }
   // The final usage chunk also carries choices[0] with no content: never assume choices is empty.
   const text = json.choices?.[0]?.delta?.content;
-  return text ? { type: 'delta', text } : null;
+  // The model that answers travels in every chunk, not only in the usage one: keep it to name the writer.
+  return text ? { type: 'delta', text, servedModel: json.model } : null;
 }
 
 export async function* streamCompletion(
