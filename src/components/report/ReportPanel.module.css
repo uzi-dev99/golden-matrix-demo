@@ -157,3 +157,136 @@
   background: #dcfae5;
   color: #04250e;
 }
+
+/* Generation (waiting line, section checklist, block reveal). Motion is off with reduced motion. */
+.waiting {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 16px;
+  margin-bottom: 14px;
+  background: var(--color-ground);
+  border-radius: var(--radius-control);
+  font-size: 14px;
+}
+
+.orbit {
+  width: 14px;
+  height: 14px;
+  flex: none;
+  border-radius: 50%;
+  border: 2px solid var(--color-raised);
+  border-top-color: var(--color-brass);
+  animation: spin 0.9s linear infinite;
+}
+
+.shimmer {
+  flex: 1;
+  min-width: 0;
+  color: var(--color-muted);
+  background: linear-gradient(90deg, var(--color-muted) 0%, var(--color-muted) 40%, var(--color-ink) 50%, var(--color-muted) 60%, var(--color-muted) 100%);
+  background-size: 250% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: shimmer 1.8s linear infinite;
+}
+
+.elapsed {
+  margin-left: auto;
+  color: var(--color-muted);
+  font: 400 12px/1 var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+.steps {
+  list-style: none;
+  margin: 0 0 16px;
+  padding: 12px 16px;
+  display: grid;
+  gap: 8px;
+  background: var(--color-ground);
+  border-radius: var(--radius-control);
+  font-size: 14px;
+}
+
+.step {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--color-muted);
+  transition: color 0.3s ease;
+}
+
+.step[data-state='active'] {
+  color: var(--color-ink);
+  font-weight: 500;
+}
+
+.step[data-state='done'] {
+  color: var(--color-ink);
+}
+
+.stepMark {
+  width: 14px;
+  height: 14px;
+  flex: none;
+  border-radius: 50%;
+  border: 1.5px solid var(--color-line);
+  transition: background-color 0.3s ease, border-color 0.3s ease;
+}
+
+.step[data-state='active'] .stepMark {
+  border-color: var(--color-brass);
+  background: var(--color-brass-soft);
+  animation: pulse 1.4s ease-in-out infinite;
+}
+
+.step[data-state='done'] .stepMark {
+  border-color: var(--color-ok);
+  background: var(--color-ok)
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 14 14'%3E%3Cpath d='M3.5 7.2l2.3 2.3 4.7-4.9' fill='none' stroke='%23fff' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E")
+    center / 12px no-repeat;
+}
+
+/* Each new heading or paragraph of the report eases in once, when it first appears. */
+.reveal > * {
+  animation: rise 0.45s ease-out both;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes shimmer {
+  from {
+    background-position: 100% 0;
+  }
+  to {
+    background-position: 0 0;
+  }
+}
+
+@keyframes pulse {
+  50% {
+    box-shadow: 0 0 0 4px var(--color-brass-soft);
+  }
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .orbit,
+  .shimmer,
+  .step[data-state='active'] .stepMark,
+  .reveal > * {
+    animation: none;
+  }
+}

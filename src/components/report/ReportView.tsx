@@ -1,15 +1,46 @@
 'use client';
 
+import { useEffect, useRef, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import { nextShown } from './progress';
 import styles from './ReportPanel.module.css';
+
+/** Reveals `text` at a steady pace instead of in network bursts; instant with reduced motion. */
+function useReveal(text: string): number {
+  const [shown, setShown] = useState(text.length);
+  const shownRef = useRef(text.length);
+
+  useEffect(() => {
+    if (text.length < shownRef.current || window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      shownRef.current = text.length;
+      setShown(text.length);
+      return;
+    }
+    if (shownRef.current >= text.length) return;
+    let raf = 0;
+    let last = performance.now();
+    const tick = (now: number) => {
+      shownRef.current = nextShown(shownRef.current, text.length, now - last);
+      last = now;
+      setShown(shownRef.current);
+      if (shownRef.current < text.length) raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [text]);
+
+  return Math.min(shown, text.length);
+}
 
 /** The model's markdown, rendered without raw HTML. */
 export function ReportView({ text, streaming = false }: { text: string; streaming?: boolean }) {
+  const shown = useReveal(text);
+  const typing = streaming || shown < text.length;
   return (
-    <div className="prose-report">
-      <ReactMarkdown remarkPlugins={[remarkGfm]}>{text}</ReactMarkdown>
-      {streaming ? <span className={styles.caret} aria-hidden="true" /> : null}
+    <div className={`prose-report ${styles.reveal}`}>
+      <ReactMarkdown remarkPlugins={[remarkGfm]}>{text.slice(0, shown)}</ReactMarkdown>
+      {typing ? <span className={styles.caret} aria-hidden="true" /> : null}
     </div>
   );
 }
