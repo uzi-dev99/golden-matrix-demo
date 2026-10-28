@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { streamReport } from '@/lib/report-client';
 import { patchSession } from '@/lib/session-store';
 import type { BirthInput, ModelInfo, NatalChart, PromptOptions, PromptPreview, ReportMeta } from '@/lib/types';
@@ -116,6 +116,11 @@ export function ReportPanel({ input }: ReportPanelProps) {
   }, [inputKey, options]);
 
   const busy = phase === 'requesting' || phase === 'streaming';
+  const [reveal, setReveal] = useState({ shown: 0, typing: false });
+  const onReveal = useCallback((shown: number, typing: boolean) => setReveal({ shown, typing }), []);
+  const revealing = reveal.typing;
+  // The model may finish before the text has finished appearing: keep saying "writing" until then.
+  const writing = phase === 'streaming' || (phase === 'done' && revealing);
 
   const [elapsed, setElapsed] = useState(0);
   useEffect(() => {
@@ -238,14 +243,14 @@ export function ReportPanel({ input }: ReportPanelProps) {
                 width: 8,
                 height: 8,
                 borderRadius: '50%',
-                background: phase === 'done' ? 'var(--color-ok)' : 'var(--color-brass)',
+                background: phase === 'done' && !writing ? 'var(--color-ok)' : 'var(--color-brass)',
               }}
               aria-hidden="true"
             />
             <span>
               {phase === 'requesting'
                 ? 'Esperando al modelo…'
-                : phase === 'streaming'
+                : writing
                   ? `Escribiendo · ${words} palabras`
                   : phase === 'done'
                     ? `Informe completo · ${words} palabras`
@@ -262,8 +267,10 @@ export function ReportPanel({ input }: ReportPanelProps) {
             ) : null}
           </div>
         </div>
-        {busy ? <GenerationProgress waiting={phase === 'requesting'} text={text} elapsedMs={elapsed} model={model} /> : null}
-        <ReportView text={text} streaming={busy} />
+        {busy || writing ? (
+          <GenerationProgress waiting={phase === 'requesting'} text={text.slice(0, reveal.shown)} elapsedMs={elapsed} model={model} />
+        ) : null}
+        <ReportView text={text} streaming={busy} onReveal={onReveal} />
         {error ? (
           <p className="error-text" role="alert">
             {error}
