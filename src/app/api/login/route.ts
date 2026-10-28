@@ -15,7 +15,7 @@ export async function POST(req: Request) {
       return err('INVALID_CREDENTIALS', 'Usuario o contraseña incorrectos', 401);
     }
     const res = NextResponse.json({ ok: true, data: { user: creds.user } });
-    res.cookies.set(SESSION_COOKIE, await signSession(creds.user, sessionSecret()), sessionCookieOptions);
+    res.cookies.set(SESSION_COOKIE, await signSession(creds.user, sessionSecret()), sessionCookieOptions());
     return res;
   } catch (e) {
     return internalError(e, 'api/login');

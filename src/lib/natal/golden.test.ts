@@ -21,7 +21,7 @@ function angularDistance(a: number, b: number): number {
  * Absolute longitudes (degrees). The planets/angles come from the ported engine and were
  * cross-checked by hand (D13); the cusps are the Swiss Ephemeris reference (pyswisseph,
  * house system 'P' — 'O' for Tromsø, where Placidus does not converge) and are compared
- * with a ±0.5° tolerance.
+ * with a ±0.02° tolerance (Swiss Ephemeris values rounded to 0.01°).
  */
 const GOLDEN: Record<string, Golden> = {
   madrid: {
@@ -76,7 +76,7 @@ function expectGolden(input: BirthInput, golden: Golden): void {
   expect(chart.midheaven.absoluteDegree).toBeCloseTo(golden.midheaven, 2);
   expect(chart.nodes.northNode.absoluteDegree).toBeCloseTo(golden.northNode, 2);
   chart.houses.forEach((house, i) =>
-    expect(angularDistance(house.absoluteDegree, golden.cusps[i])).toBeLessThanOrEqual(0.5)
+    expect(angularDistance(house.absoluteDegree, golden.cusps[i])).toBeLessThanOrEqual(0.02)
   );
 }
 

@@ -1,5 +1,5 @@
-import { describe, expect, test } from 'vitest';
-import { signSession, verifySession } from './session';
+import { afterEach, describe, expect, test, vi } from 'vitest';
+import { sessionCookieOptions, signSession, verifySession } from './session';
 
 const SECRET = 'x'.repeat(32);
 
@@ -18,5 +18,19 @@ describe('session cookie', () => {
     expect(await verifySession('nope', SECRET)).toBeNull();
     expect(await verifySession(undefined, SECRET)).toBeNull();
     expect(await verifySession(`${p}.${s}.x`, SECRET, 1001)).toBeNull();
+  });
+});
+
+describe('session cookie options', () => {
+  afterEach(() => vi.unstubAllEnvs());
+  test('Secure in production unless SITE_URL is explicitly plain http', () => {
+    vi.stubEnv('NODE_ENV', 'production');
+    vi.stubEnv('SITE_URL', 'https://astrolabio.example');
+    expect(sessionCookieOptions().secure).toBe(true);
+    vi.stubEnv('SITE_URL', '');
+    expect(sessionCookieOptions().secure).toBe(true);
+    vi.stubEnv('SITE_URL', ' HTTP://192.168.0.3:3100');
+    expect(sessionCookieOptions().secure).toBe(false);
+    expect(sessionCookieOptions()).toMatchObject({ httpOnly: true, sameSite: 'lax', path: '/' });
   });
 });

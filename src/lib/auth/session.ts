@@ -1,5 +1,7 @@
 // Signed cookie "base64url(payload).base64url(HMAC-SHA256)". Web Crypto only, so the same code
 // runs in the middleware (edge) and in route handlers (node).
+import { plainHttpSite } from '@/lib/config';
+
 export const SESSION_COOKIE = 'astrolabio_session';
 const MAX_AGE_SEC = 60 * 60 * 8;
 
@@ -51,10 +53,13 @@ export async function verifySession(
   }
 }
 
-export const sessionCookieOptions = {
-  httpOnly: true,
-  sameSite: 'lax' as const,
-  path: '/',
-  secure: process.env.NODE_ENV === 'production',
-  maxAge: MAX_AGE_SEC,
-};
+// Secure in production unless SITE_URL is explicitly plain http (a LAN run); a missing SITE_URL stays Secure.
+export function sessionCookieOptions() {
+  return {
+    httpOnly: true,
+    sameSite: 'lax' as const,
+    path: '/',
+    secure: process.env.NODE_ENV === 'production' && !plainHttpSite(),
+    maxAge: MAX_AGE_SEC,
+  };
+}

@@ -49,6 +49,11 @@ export function siteUrl(): string {
   return process.env.SITE_URL || 'http://localhost:3100';
 }
 
+/** True only when SITE_URL is set explicitly to a plain-http URL (a LAN or localhost run). */
+export function plainHttpSite(): boolean {
+  return /^http:\/\//i.test((process.env.SITE_URL ?? '').trim());
+}
+
 export function rateLimitPerHour(): number {
   return int('RATE_LIMIT_PER_HOUR', 20);
 }

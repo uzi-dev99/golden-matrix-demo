@@ -20,6 +20,12 @@ const meta: ReportMeta = {
   promptVersion: 'astrolabio-prompt/1.0.0',
 };
 
+describe('ReportPanel defaults', () => {
+  test('AC12 — the default length is short, so a free model finishes in about 30 s', () => {
+    expect(source).toContain("useState<PromptOptions>({ tone: 'neutral', length: 'short' })");
+  });
+});
+
 describe('ReportMetaStrip', () => {
   test('AC12 — before a run every metric is a dash', () => {
     const html = renderToStaticMarkup(<ReportMetaStrip meta={null} free={false} />);
