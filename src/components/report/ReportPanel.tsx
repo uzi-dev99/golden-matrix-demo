@@ -125,14 +125,19 @@ export function ReportPanel({ input }: ReportPanelProps) {
     return () => clearInterval(timer);
   }, [busy]);
 
-  const generate = async () => {
-    setPhase('requesting');
-    setError('');
-    // Bring the report window into view: the reader watches it fill without scrolling.
+  // Once the waiting state is on screen, bring the report window into view: the reader watches it fill
+  // without scrolling. (Calling it in the click handler loses the smooth scroll to the re-render.)
+  useEffect(() => {
+    if (phase !== 'requesting') return;
     reportSection.current?.scrollIntoView({
       behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth',
       block: 'start',
     });
+  }, [phase]);
+
+  const generate = async () => {
+    setPhase('requesting');
+    setError('');
     setText('');
     setMeta(null);
     setElapsed(0);
