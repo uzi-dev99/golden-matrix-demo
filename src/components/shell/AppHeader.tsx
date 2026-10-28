@@ -21,6 +21,9 @@ export function AppHeader({ user }: { user: string }) {
         <span className="text-[15px] font-semibold">Astrolabio</span>
       </Link>
       <nav aria-label="Principal" className="flex items-center gap-4 text-[13px] text-muted">
+        <a href="/docs" className="text-ink underline">
+          API
+        </a>
         <span>Sesión: {user}</span>
         <button type="button" onClick={logout} className="btn btn-secondary">
           Cerrar sesión

@@ -84,6 +84,13 @@ export function LoginForm({ user, password }: { user: string; password: string }
       <p className="hint mt-4">
         Sin cuentas reales ni base de datos: la sesión es una cookie firmada que caduca en 8 horas.
       </p>
+      <p className="hint mt-2">
+        ¿Prefieres la API? La carta y el informe también se generan con un token:{' '}
+        <a href="/docs" className="text-ink underline">
+          documentación de la API
+        </a>
+        .
+      </p>
     </section>
   );
 }
