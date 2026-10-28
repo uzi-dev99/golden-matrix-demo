@@ -27,6 +27,14 @@ export class LlmError extends Error {
   }
 }
 
+const DAILY_LIMIT_MESSAGE =
+  'Se agotó el cupo diario de modelos gratuitos de esta demo en OpenRouter. Vuelve a probar mañana.';
+
+/** The account-wide daily cap of free models: no other free model can answer until it resets. */
+function dailyLimit(text: string | undefined): LlmError | null {
+  return text && /free-models-per-day/.test(text) ? new LlmError('RATE_LIMITED', DAILY_LIMIT_MESSAGE, 429, false) : null;
+}
+
 const HTTP_MESSAGES: Record<number, string> = {
   401: 'La clave de OpenRouter no es válida.',
   402: 'Crédito de OpenRouter agotado.',
@@ -50,7 +58,7 @@ export function parseChunk(data: string): StreamEvent | null {
   let json: {
     id?: string;
     model?: string;
-    error?: { message?: string };
+    error?: { message?: string; code?: number };
     choices?: { delta?: { content?: string | null } }[];
     usage?: { prompt_tokens: number; completion_tokens: number; total_tokens: number; cost?: number };
   };
@@ -59,7 +67,7 @@ export function parseChunk(data: string): StreamEvent | null {
   } catch {
     return null; // not JSON: ignore, as the SSE spec allows
   }
-  if (json.error) throw new LlmError('LLM_ERROR', 'El modelo cortó la respuesta a mitad de camino.');
+  if (json.error) throw dailyLimit(json.error.message) ?? new LlmError('LLM_ERROR', 'El modelo cortó la respuesta a mitad de camino.');
   if (json.usage) {
     const u = json.usage;
     return {
@@ -103,7 +111,7 @@ export async function* streamCompletion(
       ],
     }),
   });
-  if (!res.ok || !res.body) throw httpError(res.status);
+  if (!res.ok || !res.body) throw dailyLimit(await res.text().catch(() => undefined)) ?? httpError(res.status);
 
   const feed = createSseParser();
   const decoder = new TextDecoder();

@@ -37,6 +37,14 @@ describe('openrouter', () => {
     const [, init] = f.mock.calls[0] as unknown as [string, RequestInit];
     expect(JSON.parse(String(init.body)).reasoning).toEqual({ enabled: false });
   });
+  test('AC12 — the daily free-model cap is named as such, never retried with another model', async () => {
+    vi.stubEnv('OPENROUTER_API_KEY', 'test-key-not-real');
+    const body = '{"error":{"message":"Rate limit exceeded: free-models-per-day. Add 10 credits","code":429}}';
+    const f = vi.fn(async () => new Response(body, { status: 429 }));
+    const it = streamCompletion({ model: 'openrouter/free', system: 's', user: 'u' }, f as unknown as typeof fetch);
+    await expect(it.next()).rejects.toMatchObject({ code: 'RATE_LIMITED', status: 429, retryable: false, message: expect.stringMatching(/cupo diario/) });
+    expect(() => parseChunk(body)).toThrow(/cupo diario/);
+  });
   test('AC10 — a reasoning delta is never content: it does not reach the client', () => {
     expect(parseChunk('{"choices":[{"delta":{"reasoning":"thinking"}}]}')).toBeNull();
     expect(parseChunk('{"choices":[{"delta":{"reasoning_content":"thinking"}}]}')).toBeNull();
