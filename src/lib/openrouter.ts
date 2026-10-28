@@ -104,7 +104,8 @@ export async function* streamCompletion(
       temperature: 0.7,
       // A concrete model gets no reasoning (some providers leak it as content). A router such as
       // openrouter/free may pick a model where reasoning is mandatory: bound and exclude it there.
-      ...(minimax ? {} : { reasoning: args.model.startsWith('openrouter/') ? { effort: 'low', exclude: true } : { enabled: false } }),
+      // MiniMax M2.x writes its reasoning inline as <think>…</think> unless it is split into its own field.
+      ...(minimax ? { reasoning_split: true } : { reasoning: args.model.startsWith('openrouter/') ? { effort: 'low', exclude: true } : { enabled: false } }),
       messages: [
         { role: 'system', content: args.system },
         { role: 'user', content: args.user },
