@@ -94,10 +94,10 @@ describe('POST /api/report', () => {
       expect(bodies.map((b) => JSON.parse(b).model)).toEqual(['nvidia/nemotron-3-ultra-550b-a55b:free', 'openrouter/free']);
     }
   });
-  test('AC12 — the fallback is tried once: when it fails too, its error is the answer', async () => {
+  test('AC12 — the fallback is tried once: when it fails too, the requested model\'s error is the answer', async () => {
     const nemotron = { ...good, model: 'nvidia/nemotron-3-ultra-550b-a55b:free' };
     // The requested model fails (503) and answers nothing (reasoning only); the fallback then fails with 429.
-    for (const first of [() => new Response('{}', { status: 503 }), () => sseResponse(REASONING_ONLY_STREAM)]) {
+    for (const [i, first] of [() => new Response('{}', { status: 503 }), () => sseResponse(REASONING_ONLY_STREAM)].entries()) {
       const bodies: string[] = [];
       let n = 0;
       vi.stubGlobal('fetch', vi.fn(async (_url: string, init: RequestInit) => {
@@ -105,10 +105,10 @@ describe('POST /api/report', () => {
         n += 1;
         return n === 1 ? first() : new Response('{}', { status: 429 });
       }));
-      const res = await call(nemotron, `10.1.0.${n}`);
+      const res = await call(nemotron, `10.2.0.${i}`);
       expect(bodies.map((b) => JSON.parse(b).model)).toEqual(['nvidia/nemotron-3-ultra-550b-a55b:free', 'openrouter/free']);
-      expect(res.status).toBe(429);
-      expect((await res.json()).error.code).toBe('RATE_LIMITED');
+      expect(res.status).toBe(502);
+      expect(['LLM_ERROR', 'EMPTY_COMPLETION']).toContain((await res.json()).error.code);
     }
   });
   test('AC12 — the meta names the model that served the report, even without a usage chunk', async () => {
@@ -133,6 +133,17 @@ describe('POST /api/report', () => {
     vi.stubGlobal('fetch', vi.fn(async () => (n += 1) === 1 ? sseResponse(REASONING_ONLY_STREAM) : sseResponse(OK_STREAM)));
     await (await call(nemotron, '10.1.1.3')).text();
     expect(closed.count).toBe(1);
+  });
+  test('AC12 — when the fallback fails too, the user sees why the requested model failed, not the router error', async () => {
+    const daily = () => new Response('{"error":{"message":"Rate limit exceeded: free-models-per-day","code":429}}', { status: 429 });
+    vi.stubGlobal('fetch', vi.fn(async (_u: string, init: RequestInit) => (JSON.parse(String(init.body)).model === 'openrouter/free' ? daily() : sseResponse(REASONING_ONLY_STREAM))));
+    const empty = await call({ ...good, model: 'nvidia/nemotron-3-ultra-550b-a55b:free' }, '10.1.0.1');
+    expect((await empty.json()).error.code).toBe('EMPTY_COMPLETION');
+    vi.stubGlobal('fetch', vi.fn(async (_u: string, init: RequestInit) => (JSON.parse(String(init.body)).model === 'openrouter/free' ? daily() : new Response('{}', { status: 503 }))));
+    const down = await call({ ...good, model: 'nvidia/nemotron-3-ultra-550b-a55b:free' }, '10.1.0.2');
+    const body = await down.json();
+    expect(body.error.message).not.toMatch(/cupo diario/);
+    expect(body.error.code).toBe('LLM_ERROR');
   });
   test('AC12 — a bad key (401) does not try the fallback model', async () => {
     const f = vi.fn(async () => new Response('{}', { status: 401 }));

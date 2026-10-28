@@ -58,6 +58,7 @@ describe('openrouter', () => {
     expect(body.model).toBe('MiniMax-M3.1-Flash');
     expect(body.reasoning).toBeUndefined();
     expect(body.temperature).toBe(0.3);
+    expect(body.reasoning_effort).toBe('low');
   });
   test('AC11 — a MiniMax model is listed as paid, without asking the OpenRouter catalog for it', async () => {
     __resetCatalogForTests();
