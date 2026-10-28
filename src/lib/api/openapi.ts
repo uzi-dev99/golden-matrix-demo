@@ -54,8 +54,8 @@ export function openApiDocument() {
         post: {
           tags: ['Auth'],
           summary: 'Obtener un token',
-          description: 'Cambia las credenciales de la demo por un token firmado (HMAC) válido 8 horas.',
-          requestBody: body(tokenRequestSchema, { user: 'demo', password: 'astrolabio-demo' }),
+          description: 'Cambia las credenciales de la demo por un token firmado (HMAC) válido 8 horas. Las credenciales se muestran en /login.',
+          requestBody: body(tokenRequestSchema, { user: 'demo', password: '<contraseña de la demo>' }),
           responses: {
             200: ok('Token emitido', {
               type: 'object',

@@ -40,7 +40,10 @@ export async function POST(req: Request) {
         const ev = JSON.parse(data) as ReportEvent;
         if (ev.type === 'delta') report += ev.text;
         else if (ev.type === 'meta') meta = ev.meta;
-        else return err(ev.code, ev.message, 502);
+        else {
+          await reader.cancel().catch(() => {}); // stop the upstream call before answering
+          return err(ev.code, ev.message, 502);
+        }
       }
     }
     return ok({ report, sections: splitSections(report), meta });

@@ -1,4 +1,6 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
+import { __resetRateLimitForTests } from '@/lib/rate-limit';
+import { sseResponse, OK_STREAM } from '@/test/sse-fixtures';
 import { POST as token } from './auth/token/route';
 import { POST as chart } from './chart/route';
 import { POST as report } from './report/route';
@@ -14,6 +16,13 @@ const birth = {
   place: { label: 'Madrid', latitude: 40.4168, longitude: -3.7038, timezone: 'Europe/Madrid' },
 };
 
+/** A provider answer with no content: the route answers with an SSE error event. */
+const NO_TEXT_STREAM = [
+  'data: {"id":"gen-2","model":"vendor/served:free","choices":[{"index":0,"delta":{},"finish_reason":"length"}],"usage":{"prompt_tokens":10,"completion_tokens":0,"total_tokens":10,"cost":0}}',
+  'data: [DONE]',
+  '',
+].join('\n\n');
+
 async function getToken() {
   const res = await token(json('/api/v1/auth/token', { user: 'demo', password: 'pw' }));
   return ((await res.json()) as { data: { access_token: string } }).data.access_token;
@@ -21,11 +30,17 @@ async function getToken() {
 
 describe('public API v1', () => {
   beforeEach(() => {
+    __resetRateLimitForTests();
     vi.stubEnv('SESSION_SECRET', 'x'.repeat(40));
     vi.stubEnv('DEMO_USER', 'demo');
     vi.stubEnv('DEMO_PASSWORD', 'pw');
+    vi.stubEnv('OPENROUTER_API_KEY', 'test-key-not-real');
   });
-  afterEach(() => vi.unstubAllEnvs());
+  afterEach(() => {
+    vi.unstubAllEnvs();
+    vi.unstubAllGlobals();
+    vi.restoreAllMocks();
+  });
 
   test('a token is issued only for the demo credentials', async () => {
     expect((await token(json('/api/v1/auth/token', { user: 'demo', password: 'no' }))).status).toBe(401);
@@ -62,5 +77,40 @@ describe('public API v1', () => {
     expect(Object.keys(doc.paths)).toEqual(['/api/v1/auth/token', '/api/v1/chart', '/api/v1/report']);
     expect(doc.paths['/api/v1/chart'].post.security).toEqual([{ bearer: [] }]);
     expect(doc.paths['/api/v1/chart'].post.requestBody.content['application/json'].schema.properties.place).toBeDefined();
+  });
+
+  test('the OpenAPI document does not publish the demo password', async () => {
+    const doc = await openapi().json();
+    const tokenOp = doc.paths['/api/v1/auth/token'].post;
+    expect(tokenOp.requestBody.content['application/json'].example.password).toBe('<contraseña de la demo>');
+    expect(tokenOp.description).toContain('/login');
+  });
+
+  test('a missing SESSION_SECRET answers a clear 500 instead of crashing', async () => {
+    vi.stubEnv('SESSION_SECRET', '');
+    for (const call of [chart, report]) {
+      const res = await call(json('/api/v1/x', birth, { Authorization: 'Bearer whatever' }));
+      expect(res.status).toBe(500);
+      expect((await res.json()).error).toMatchObject({ code: 'INTERNAL', message: 'SESSION_SECRET is not configured' });
+    }
+  });
+
+  test('the report is generated with a token', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => sseResponse(OK_STREAM)));
+    const res = await report(json('/api/v1/report', { input: birth }, { Authorization: `Bearer ${await getToken()}` }));
+    expect(res.status).toBe(200);
+    const { data } = await res.json();
+    expect(data.report).toContain('## Visión general');
+    expect(data.sections).toEqual([{ title: 'Visión general', body: 'Hola.' }]);
+    expect(data.meta).toMatchObject({ servedModel: 'vendor/served:free', totalTokens: 128 });
+  });
+
+  test('an SSE error event stops the upstream reader and answers 502', async () => {
+    const cancel = vi.spyOn(ReadableStreamDefaultReader.prototype, 'cancel');
+    vi.stubGlobal('fetch', vi.fn(async () => sseResponse(NO_TEXT_STREAM)));
+    const res = await report(json('/api/v1/report', { input: birth }, { Authorization: `Bearer ${await getToken()}` }));
+    expect(res.status).toBe(502);
+    expect((await res.json()).error.code).toBe('EMPTY_COMPLETION');
+    expect(cancel).toHaveBeenCalled();
   });
 });
