@@ -34,11 +34,24 @@ export function openRouterKey(): string {
   return required('OPENROUTER_API_KEY');
 }
 
-/** Allow-list of OpenRouter model ids; the first entry is the default. */
+/** Models served by MiniMax's own API use this prefix in the allow-list (`minimax/MiniMax-M3.1-Flash`). */
+export const MINIMAX_PREFIX = 'minimax/';
+
+export function minimaxKey(): string {
+  return required('MINIMAX_API_KEY');
+}
+
+/**
+ * Allow-list of model ids (OpenRouter ids, or `minimax/<model>`); the first entry is the default.
+ * A model whose provider has no key in this environment is left out, so one list serves a LAN run
+ * with MiniMax and an online run with OpenRouter only.
+ */
 export function allowedModels(): string[] {
   const raw = process.env.OPENROUTER_MODELS;
   const list = (raw ? raw.split(',') : DEFAULT_MODELS).map((s) => s.trim()).filter(Boolean);
-  return list.length ? list : DEFAULT_MODELS;
+  const usable = list.filter((id) => (id.startsWith(MINIMAX_PREFIX) ? !!process.env.MINIMAX_API_KEY : !!process.env.OPENROUTER_API_KEY));
+  // With no key at all keep the list: the report then fails with a clear "not configured" error.
+  return usable.length ? usable : list.length ? list : DEFAULT_MODELS;
 }
 
 export function defaultModel(): string {
