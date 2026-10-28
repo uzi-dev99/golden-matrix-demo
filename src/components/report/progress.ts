@@ -22,6 +22,15 @@ export function sectionStates(text: string, finished: boolean): SectionState[] {
 }
 
 /**
+ * Where the reveal starts for a new chunk of text: the whole text at once with reduced motion or
+ * when the text shrank (a new run), otherwise where the previous chunk left off.
+ */
+export function revealStart(prevShown: number, textLength: number, reducedMotion: boolean): number {
+  if (reducedMotion || textLength < prevShown) return textLength;
+  return prevShown;
+}
+
+/**
  * How many characters to show next frame. The network delivers text in bursts; revealing it at a
  * steady pace that speeds up with the backlog keeps the typing fluid and never lags more than ~0.5 s.
  */

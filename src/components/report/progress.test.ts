@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'vitest';
 import { SYSTEM_TEMPLATE } from '@/lib/prompt/templates/system';
-import { REPORT_SECTIONS, nextShown, sectionStates } from './progress';
+import { REPORT_SECTIONS, nextShown, revealStart, sectionStates } from './progress';
 
 describe('report progress', () => {
   test('the section list matches the system template', () => {
@@ -24,5 +24,10 @@ describe('report progress', () => {
     expect(nextShown(990, 1000, 1000)).toBe(1000);
     expect(nextShown(10, 10, 16)).toBe(10);
     expect(nextShown(0, 5, 1)).toBe(1);
+  });
+  test('the reveal is instant with reduced motion and restarts when the text shrinks', () => {
+    expect(revealStart(100, 400, true)).toBe(400);
+    expect(revealStart(400, 100, false)).toBe(100);
+    expect(revealStart(100, 400, false)).toBe(100);
   });
 });

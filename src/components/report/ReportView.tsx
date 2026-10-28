@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import { nextShown } from './progress';
+import { nextShown, revealStart } from './progress';
 import styles from './ReportPanel.module.css';
 
 /** Reveals `text` at a steady pace instead of in network bursts; instant with reduced motion. */
@@ -12,12 +12,12 @@ function useReveal(text: string): number {
   const shownRef = useRef(text.length);
 
   useEffect(() => {
-    if (text.length < shownRef.current || window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
-      shownRef.current = text.length;
-      setShown(text.length);
-      return;
+    const start = revealStart(shownRef.current, text.length, window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+    if (start !== shownRef.current) {
+      shownRef.current = start;
+      setShown(start);
     }
-    if (shownRef.current >= text.length) return;
+    if (start >= text.length) return;
     let raf = 0;
     let last = performance.now();
     const tick = (now: number) => {
