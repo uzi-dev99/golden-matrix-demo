@@ -24,7 +24,7 @@ export async function middleware(req: NextRequest) {
   return NextResponse.redirect(login);
 }
 
-// Everything except the login page, its API and Next internals.
+// Everything except the login page, its API, the public API (Bearer auth) with its docs, and Next internals.
 export const config = {
-  matcher: ['/((?!login|api/login|api/logout|_next/static|_next/image|favicon.ico|icon.svg).*)'],
+  matcher: ['/((?!login|api/login|api/logout|api/v1|docs|_next/static|_next/image|favicon.ico|icon.svg).*)'],
 };

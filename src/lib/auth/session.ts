@@ -3,7 +3,7 @@
 import { plainHttpSite } from '@/lib/config';
 
 export const SESSION_COOKIE = 'astrolabio_session';
-const MAX_AGE_SEC = 60 * 60 * 8;
+export const SESSION_MAX_AGE_SEC = 60 * 60 * 8;
 
 export interface SessionPayload {
   user: string;
@@ -29,7 +29,7 @@ function hmacKey(secret: string, usage: KeyUsage): Promise<CryptoKey> {
 }
 
 export async function signSession(user: string, secret: string, nowSec = Math.floor(Date.now() / 1000)): Promise<string> {
-  const payload = b64url(enc.encode(JSON.stringify({ user, exp: nowSec + MAX_AGE_SEC } satisfies SessionPayload)));
+  const payload = b64url(enc.encode(JSON.stringify({ user, exp: nowSec + SESSION_MAX_AGE_SEC } satisfies SessionPayload)));
   const sig = await crypto.subtle.sign('HMAC', await hmacKey(secret, 'sign'), enc.encode(payload));
   return `${payload}.${b64url(new Uint8Array(sig))}`;
 }
@@ -60,6 +60,6 @@ export function sessionCookieOptions() {
     sameSite: 'lax' as const,
     path: '/',
     secure: process.env.NODE_ENV === 'production' && !plainHttpSite(),
-    maxAge: MAX_AGE_SEC,
+    maxAge: SESSION_MAX_AGE_SEC,
   };
 }
