@@ -27,7 +27,7 @@ export function ResultsView({ input, chart }: { input: BirthInput; chart: NatalC
       </p>
 
       <div className="grid gap-3 lg:grid-cols-[5fr_7fr] lg:items-start">
-        <div className="grid gap-3 lg:sticky lg:top-3">
+        <div className="grid gap-3">
           <section className="panel" aria-labelledby="titulo-carta">
             <div className="flex flex-wrap items-baseline justify-between gap-2">
               <h2 id="titulo-carta" className="text-base font-semibold">Carta natal</h2>
