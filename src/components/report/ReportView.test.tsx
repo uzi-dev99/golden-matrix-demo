@@ -10,7 +10,7 @@ describe('ReportView', () => {
     expect(html).not.toContain('<script>');
   });
   test('AC12 — the caret only shows while streaming', () => {
-    expect(renderToStaticMarkup(<ReportView text="Hola" streaming />)).toContain('caret');
-    expect(renderToStaticMarkup(<ReportView text="Hola" />)).not.toContain('caret');
+    expect(renderToStaticMarkup(<ReportView text="Hola" streaming />)).toContain('data-typing="true"');
+    expect(renderToStaticMarkup(<ReportView text="Hola" />)).not.toContain('data-typing');
   });
 });

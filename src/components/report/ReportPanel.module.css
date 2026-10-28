@@ -11,7 +11,9 @@
   overflow: auto;
 }
 
-.caret {
+/* The caret follows the last line of text while the report is being written. */
+.reveal[data-typing] > :last-child::after {
+  content: '';
   display: inline-block;
   width: 2px;
   height: 1.05em;
@@ -28,7 +30,7 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .caret {
+  .reveal[data-typing] > :last-child::after {
     animation: none;
   }
 }

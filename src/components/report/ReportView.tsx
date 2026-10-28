@@ -38,9 +38,8 @@ export function ReportView({ text, streaming = false }: { text: string; streamin
   const shown = useReveal(text);
   const typing = streaming || shown < text.length;
   return (
-    <div className={`prose-report ${styles.reveal}`}>
+    <div className={`prose-report ${styles.reveal}`} data-typing={typing || undefined}>
       <ReactMarkdown remarkPlugins={[remarkGfm]}>{text.slice(0, shown)}</ReactMarkdown>
-      {typing ? <span className={styles.caret} aria-hidden="true" /> : null}
     </div>
   );
 }
