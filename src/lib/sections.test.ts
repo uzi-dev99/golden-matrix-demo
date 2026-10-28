@@ -7,7 +7,8 @@ describe('splitSections', () => {
       { title: 'Uno', body: 'cuerpo' },
       { title: 'Dos', body: 'más' },
     ]);
-    expect(splitSections('sin secciones')).toEqual([]);
+    expect(splitSections('sin secciones')).toEqual([{ title: 'Informe', body: 'sin secciones' }]);
+    expect(splitSections('  \n')).toEqual([]);
     expect(splitSections('## Solo título')).toEqual([{ title: 'Solo título', body: '' }]);
   });
 });

@@ -86,8 +86,9 @@ export async function* streamCompletion(
       stream_options: { include_usage: true },
       max_tokens: 1800,
       temperature: 0.7,
-      // The reasoning budget is bounded so it cannot eat the whole output, and it is excluded so it never streams.
-      reasoning: { effort: 'low', exclude: true },
+      // A concrete model gets no reasoning (some providers leak it as content). A router such as
+      // openrouter/free may pick a model where reasoning is mandatory: bound and exclude it there.
+      reasoning: args.model.startsWith('openrouter/') ? { effort: 'low', exclude: true } : { enabled: false },
       messages: [
         { role: 'system', content: args.system },
         { role: 'user', content: args.user },
