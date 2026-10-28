@@ -69,7 +69,7 @@ describe('POST /api/report', () => {
     expect(events.filter((e) => e.type === 'delta').map((e) => e.text).join('')).toBe('## Visión general\nHola.');
     const meta = events.at(-1);
     expect(meta.type).toBe('meta');
-    expect(meta.meta).toMatchObject({ model: 'openrouter/free', servedModel: 'vendor/served:free', promptTokens: 120, completionTokens: 8, totalTokens: 128, promptVersion: 'astrolabio-prompt/1.2.0' });
+    expect(meta.meta).toMatchObject({ model: 'openrouter/free', servedModel: 'vendor/served:free', promptTokens: 120, completionTokens: 8, totalTokens: 128, promptVersion: 'astrolabio-prompt/1.3.0' });
     expect(meta.meta.latencyMs).toBeGreaterThanOrEqual(0);
   });
   test('AC12 — a provider stream with no content ends in an error event, not in a success meta', async () => {
