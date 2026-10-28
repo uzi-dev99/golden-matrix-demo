@@ -263,7 +263,7 @@ export function ReportPanel({ input }: ReportPanelProps) {
           </div>
         </div>
         {busy ? <GenerationProgress waiting={phase === 'requesting'} text={text} elapsedMs={elapsed} model={model} /> : null}
-        <ReportView text={text} streaming={phase === 'streaming'} />
+        <ReportView text={text} streaming={busy} />
         {error ? (
           <p className="error-text" role="alert">
             {error}
