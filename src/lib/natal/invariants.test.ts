@@ -39,3 +39,19 @@ describe('house invariants', () => {
     });
   }
 });
+
+// Swiss Ephemeris (pyswisseph, Placidus) cusps at ±60°, where the old declination formula drifted up to ~1.9°.
+const HIGH_LATITUDE: [string, number[]][] = [
+  ['lat 60 N', [182.39, 204.44, 234.15, 273.52, 312.14, 341.06, 2.39, 24.44, 54.15, 93.52, 132.14, 161.06]],
+  ['lat 60 S', [274.25, 285.5, 297.66, 313.71, 340.08, 33.89, 94.25, 105.5, 117.66, 133.71, 160.08, 213.89]],
+];
+
+describe('Placidus cusps at high latitude', () => {
+  for (const [name, expected] of HIGH_LATITUDE) {
+    test(`${name} — every cusp within 0.02° of Swiss Ephemeris`, () => {
+      const input = CASES.find((c) => c.name === name)!;
+      const cusps = calculateNatalChart(input).houses.map((h) => h.absoluteDegree);
+      cusps.forEach((cusp, i) => expect(Math.abs(((cusp - expected[i] + 540) % 360) - 180)).toBeLessThanOrEqual(0.02));
+    });
+  }
+});

@@ -63,7 +63,7 @@ export function ReportMetaStrip({ meta, free }: { meta: ReportMeta | null; free:
 }
 
 export function ReportPanel({ input }: ReportPanelProps) {
-  const [options, setOptions] = useState<PromptOptions>({ tone: 'neutral', length: 'medium' });
+  const [options, setOptions] = useState<PromptOptions>({ tone: 'neutral', length: 'short' });
   const [models, setModels] = useState<ModelInfo[]>([]);
   const [model, setModel] = useState('');
   const [preview, setPreview] = useState<PromptPreview | null>(null);

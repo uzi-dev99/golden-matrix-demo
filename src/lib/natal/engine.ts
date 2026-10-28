@@ -162,8 +162,8 @@ function calculatePlacidusHouses(
   const solveCuspRa = (baseOffsetDeg: number, factor: number): number => {
     let y = ramcRad + (baseOffsetDeg * Math.PI) / 180;
     for (let iter = 0; iter < 15; iter++) {
-      const sinDec = Math.sin(epsRad) * Math.sin(y);
-      const tanDec = sinDec / Math.sqrt(Math.max(0.00001, 1 - sinDec * sinDec));
+      // y is a right ascension: tan(dec) = tan(eps) * sin(RA) for a point on the ecliptic.
+      const tanDec = Math.tan(epsRad) * Math.sin(y);
       const val = Math.tan(latRad) * tanDec;
       const clampedVal = Math.max(-0.9999, Math.min(0.9999, val));
       const f = factor * Math.asin(clampedVal);
