@@ -41,16 +41,16 @@ function useReveal(text: string): number {
 export function ReportView({
   text,
   streaming = false,
-  onTypingChange,
+  onReveal,
 }: {
   text: string;
   streaming?: boolean;
-  /** Tells the panel when the text is still being revealed, so its status does not say "complete" too early. */
-  onTypingChange?: (typing: boolean) => void;
+  /** How much text is on screen and whether it is still being revealed: the panel's status and checklist follow it. */
+  onReveal?: (shown: number, typing: boolean) => void;
 }) {
   const shown = useReveal(text);
   const typing = streaming || shown < text.length;
-  useEffect(() => onTypingChange?.(typing), [typing, onTypingChange]);
+  useEffect(() => onReveal?.(shown, typing), [shown, typing, onReveal]);
   const box = useRef<HTMLDivElement>(null);
   const follow = useRef(true);
 
