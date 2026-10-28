@@ -13,6 +13,13 @@ describe('ResultsView', () => {
     expect(html).toContain('>Informe<');
   });
 
+  test('AC9 — all 12 houses are rendered and the chart column is not sticky (it is taller than the screen)', () => {
+    const html = renderToStaticMarkup(<ResultsView input={madridInput} chart={madridChart} />);
+    const houses = html.slice(html.indexOf('Cúspides de las casas'));
+    expect(houses.match(/<tr>/g)?.length).toBe(13);
+    expect(html).not.toContain('sticky');
+  });
+
   test('AC9 — the positions panel is a tablist with the two tables', () => {
     const html = renderToStaticMarkup(<ResultsView input={madridInput} chart={madridChart} />);
     expect(html).toContain('role="tablist"');

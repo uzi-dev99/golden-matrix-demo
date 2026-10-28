@@ -292,3 +292,17 @@
     animation: none;
   }
 }
+
+/* While the report is written: a fixed window that follows the newest line; older lines rise and fade out. */
+.crawl[data-typing] {
+  height: min(55vh, 30rem); /* reserved from the start, so the page can scroll it fully into view */
+  overflow-y: auto;
+  scrollbar-width: none;
+  padding-top: 4rem;
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 9rem);
+  mask-image: linear-gradient(to bottom, transparent 0, #000 9rem);
+}
+
+.crawl[data-typing]::-webkit-scrollbar {
+  display: none;
+}

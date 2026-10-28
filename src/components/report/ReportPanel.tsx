@@ -74,6 +74,7 @@ export function ReportPanel({ input }: ReportPanelProps) {
   const [error, setError] = useState('');
   const abort = useRef<AbortController | null>(null);
   const streamed = useRef('');
+  const reportSection = useRef<HTMLElement>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -123,6 +124,17 @@ export function ReportPanel({ input }: ReportPanelProps) {
     const timer = setInterval(() => setElapsed(performance.now() - start), 100);
     return () => clearInterval(timer);
   }, [busy]);
+
+  // Once the waiting state is on screen, bring the report window into view: the reader watches it fill
+  // without scrolling. (Calling it in the click handler loses the smooth scroll to the re-render.)
+  useEffect(() => {
+    // Again when the first text arrives: the window has its full height only then.
+    if (phase !== 'requesting' && phase !== 'streaming') return;
+    reportSection.current?.scrollIntoView({
+      behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth',
+      block: 'start',
+    });
+  }, [phase]);
 
   const generate = async () => {
     setPhase('requesting');
@@ -216,7 +228,7 @@ export function ReportPanel({ input }: ReportPanelProps) {
         </div>
       </section>
 
-      <section className="panel" aria-label="Informe" aria-live="polite">
+      <section ref={reportSection} className="panel" aria-label="Informe" aria-live="polite">
         <div className={styles.panelHead}>
           <h2 className={styles.panelH}>Informe</h2>
           <div className={styles.status}>
@@ -251,7 +263,7 @@ export function ReportPanel({ input }: ReportPanelProps) {
           </div>
         </div>
         {busy ? <GenerationProgress waiting={phase === 'requesting'} text={text} elapsedMs={elapsed} model={model} /> : null}
-        <ReportView text={text} streaming={phase === 'streaming'} />
+        <ReportView text={text} streaming={busy} />
         {error ? (
           <p className="error-text" role="alert">
             {error}
