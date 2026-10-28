@@ -18,6 +18,7 @@ Scalar.createApiReference('#app', {
   theme: 'default',
   hideDownloadButton: false,
   metaData: { title: 'Astrolabio API' },
+  authentication: { preferredSecurityScheme: 'bearer' },
   customCss: ':root { --scalar-color-accent: #8c5d12; }',
 });
 </script>

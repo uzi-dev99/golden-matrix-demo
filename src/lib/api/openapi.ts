@@ -45,7 +45,7 @@ export function openApiDocument() {
       description:
         'Carta natal calculada en el servidor e informe escrito por un modelo gratuito de OpenRouter. ' +
         'Pide un token con las credenciales de la demo (usuario `demo`) y úsalo como `Authorization: Bearer <token>`. ' +
-        'Los informes comparten el límite de 20 por hora y por IP.',
+        'Los informes comparten el límite de 20 por hora y por IP. [Abrir la demo web](/).',
     },
     servers: [{ url: '/' }],
     components: { securitySchemes: { bearer: { type: 'http', scheme: 'bearer' } } },
