@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { nextShown, revealStart } from './progress';
@@ -33,13 +33,33 @@ function useReveal(text: string): number {
   return Math.min(shown, text.length);
 }
 
-/** The model's markdown, rendered without raw HTML. */
+/**
+ * The model's markdown, rendered without raw HTML. While it is written the text sits in a fixed
+ * window that follows the newest line, and older lines fade out at the top; when it ends the whole
+ * report is shown. Scrolling up inside the window pauses the follow until the reader comes back down.
+ */
 export function ReportView({ text, streaming = false }: { text: string; streaming?: boolean }) {
   const shown = useReveal(text);
   const typing = streaming || shown < text.length;
+  const box = useRef<HTMLDivElement>(null);
+  const follow = useRef(true);
+
+  useLayoutEffect(() => {
+    if (!text) follow.current = true; // a new run starts following again
+    const el = box.current;
+    if (typing && follow.current && el) el.scrollTop = el.scrollHeight;
+  }, [shown, typing, text]);
+
+  const onScroll = () => {
+    const el = box.current;
+    if (el && typing) follow.current = el.scrollHeight - el.scrollTop - el.clientHeight < 48;
+  };
+
   return (
-    <div className={`prose-report ${styles.reveal}`} data-typing={typing || undefined}>
-      <ReactMarkdown remarkPlugins={[remarkGfm]}>{text.slice(0, shown)}</ReactMarkdown>
+    <div ref={box} className={styles.crawl} data-typing={typing || undefined} onScroll={onScroll}>
+      <div className={`prose-report ${styles.reveal}`} data-typing={typing || undefined}>
+        <ReactMarkdown remarkPlugins={[remarkGfm]}>{text.slice(0, shown)}</ReactMarkdown>
+      </div>
     </div>
   );
 }

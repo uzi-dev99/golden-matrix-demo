@@ -74,6 +74,7 @@ export function ReportPanel({ input }: ReportPanelProps) {
   const [error, setError] = useState('');
   const abort = useRef<AbortController | null>(null);
   const streamed = useRef('');
+  const reportSection = useRef<HTMLElement>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -127,6 +128,11 @@ export function ReportPanel({ input }: ReportPanelProps) {
   const generate = async () => {
     setPhase('requesting');
     setError('');
+    // Bring the report window into view: the reader watches it fill without scrolling.
+    reportSection.current?.scrollIntoView({
+      behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth',
+      block: 'start',
+    });
     setText('');
     setMeta(null);
     setElapsed(0);
@@ -216,7 +222,7 @@ export function ReportPanel({ input }: ReportPanelProps) {
         </div>
       </section>
 
-      <section className="panel" aria-label="Informe" aria-live="polite">
+      <section ref={reportSection} className="panel" aria-label="Informe" aria-live="polite">
         <div className={styles.panelHead}>
           <h2 className={styles.panelH}>Informe</h2>
           <div className={styles.status}>
