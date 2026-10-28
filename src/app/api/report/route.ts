@@ -10,6 +10,9 @@ import { reportRequestSchema } from '@/lib/schemas';
 import { safeStream } from '@/lib/sse';
 import type { ReportEvent, ReportMeta } from '@/lib/types';
 
+/** Used once when the requested model fails or answers nothing before writing any text. */
+const FALLBACK_MODEL = 'openrouter/free';
+
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
@@ -38,16 +41,33 @@ export async function POST(req: Request) {
     }
     const prompt = buildPrompt(input, chart, options);
 
-    // Pull the first event before answering so provider errors (401/402/429) become real HTTP statuses.
-    const it = streamCompletion({ model, system: segmentsToText(prompt.system), user: segmentsToText(prompt.user), signal: req.signal });
-    let first: IteratorResult<StreamEvent>;
+    // Pull events up to the first text before answering, so provider errors (401/402/429) become real HTTP
+    // statuses and a failed or empty start can still switch to the fallback model.
+    const open = async (m: string) => {
+      const it = streamCompletion({ model: m, system: segmentsToText(prompt.system), user: segmentsToText(prompt.user), signal: req.signal });
+      const head: StreamEvent[] = [];
+      for (let n = await it.next(); !n.done; n = await it.next()) {
+        head.push(n.value);
+        if (n.value.type === 'delta' && n.value.text) break;
+      }
+      return { it, head };
+    };
+    const fallback = allowedModels().includes(FALLBACK_MODEL) && model !== FALLBACK_MODEL ? FALLBACK_MODEL : null;
+    let opened: Awaited<ReturnType<typeof open>>;
     try {
-      first = await it.next();
+      try {
+        opened = await open(model);
+        if (fallback && !opened.head.some((ev) => ev.type === 'delta' && ev.text)) opened = await open(fallback);
+      } catch (e) {
+        if (!(fallback && e instanceof LlmError && e.retryable)) throw e;
+        opened = await open(fallback); // the requested model is down: one try with the router before failing
+      }
     } catch (e) {
       if (e instanceof LlmError) return err(e.code, e.message, e.status);
       if (e instanceof Error && /OPENROUTER_API_KEY/.test(e.message)) return err('LLM_ERROR', 'El servicio de IA no está configurado.', 503);
       throw e;
     }
+    const { it, head } = opened;
 
     const stream = new ReadableStream<Uint8Array>({
       async start(controller) {
@@ -62,7 +82,7 @@ export async function POST(req: Request) {
           } else usage = ev;
         };
         try {
-          if (!first.done) handle(first.value);
+          head.forEach(handle);
           for (let n = await it.next(); !n.done; n = await it.next()) handle(n.value);
           if (!text.trim()) {
             // The provider spent the whole budget reasoning: there is no report to show, so it is an error, not a success.

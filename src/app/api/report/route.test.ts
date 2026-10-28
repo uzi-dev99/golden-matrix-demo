@@ -47,6 +47,26 @@ describe('POST /api/report', () => {
     expect(events[0]).toMatchObject({ code: 'EMPTY_COMPLETION' });
     expect(events[0].message).toMatch(/no devolvió texto/);
   });
+  test('AC12 — when the requested model fails or answers nothing, the report comes from openrouter/free once', async () => {
+    const nemotron = { ...good, model: 'nvidia/nemotron-3-ultra-550b-a55b:free' };
+    const bodies: string[] = [];
+    for (const failure of [() => new Response('{}', { status: 503 }), () => sseResponse(REASONING_ONLY_STREAM)]) {
+      bodies.length = 0;
+      let n = 0;
+      vi.stubGlobal('fetch', vi.fn(async (_url: string, init: RequestInit) => (bodies.push(String(init.body)), n++ === 0 ? failure() : sseResponse(OK_STREAM))));
+      const res = await call(nemotron, `10.0.0.${n + bodies.length + 1}`);
+      const events = (await res.text()).trim().split('\n\n').map((b) => JSON.parse(b.replace(/^data: /, '')));
+      expect(events.at(-1).meta).toMatchObject({ model: 'nvidia/nemotron-3-ultra-550b-a55b:free', servedModel: 'vendor/served:free' });
+      expect(bodies.map((b) => JSON.parse(b).model)).toEqual(['nvidia/nemotron-3-ultra-550b-a55b:free', 'openrouter/free']);
+    }
+  });
+  test('AC12 — a bad key (401) does not try the fallback model', async () => {
+    const f = vi.fn(async () => new Response('{}', { status: 401 }));
+    vi.stubGlobal('fetch', f);
+    const res = await call({ ...good, model: 'nvidia/nemotron-3-ultra-550b-a55b:free' });
+    expect(res.status).toBe(502);
+    expect(f).toHaveBeenCalledTimes(1);
+  });
   test('AC10 — a model outside the allow-list is 403 and never reaches the provider', async () => {
     const f = vi.fn();
     vi.stubGlobal('fetch', f);
