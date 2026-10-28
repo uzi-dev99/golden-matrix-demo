@@ -12,6 +12,7 @@ import type { ReportEvent, ReportMeta } from '@/lib/types';
 
 /** Used once when the requested model fails or answers nothing before writing any text. */
 const FALLBACK_MODEL = 'openrouter/free';
+const EMPTY_MESSAGE = 'El modelo no devolvió texto: puede haber gastado el presupuesto razonando. Prueba con otro modelo.';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -56,21 +57,30 @@ export async function POST(req: Request) {
     let it = start(model);
     let head: StreamEvent[];
     let usedFallback = false;
+    // Why the requested model failed: if the fallback fails too, the user sees this, not the router's error.
+    let primaryError: LlmError | undefined;
+    const tryFallback = async () => {
+      console.error(`[api/report] ${model} failed (${primaryError?.code}); trying ${FALLBACK_MODEL}`);
+      await it.return?.(undefined); // the discarded call leaves no stream open
+      usedFallback = true;
+      it = start(FALLBACK_MODEL);
+      try {
+        head = await pullHead(it);
+      } catch (e) {
+        throw primaryError ?? e;
+      }
+    };
     try {
       try {
         head = await pullHead(it);
       } catch (e) {
         if (!(canFallback && e instanceof LlmError && e.retryable)) throw e;
-        await it.return?.(undefined); // the failed call leaves no stream open
-        usedFallback = true;
-        it = start(FALLBACK_MODEL); // the requested model is down: one try with the router before failing
-        head = await pullHead(it);
+        primaryError = e;
+        await tryFallback(); // the requested model is down: one try with the router before failing
       }
-      if (!usedFallback && canFallback && !head.some((ev) => ev.type === 'delta' && ev.text)) {
-        await it.return?.(undefined); // the discarded model leaves no stream open
-        usedFallback = true;
-        it = start(FALLBACK_MODEL);
-        head = await pullHead(it);
+      if (!usedFallback && canFallback && !head!.some((ev) => ev.type === 'delta' && ev.text)) {
+        primaryError = new LlmError('EMPTY_COMPLETION', EMPTY_MESSAGE);
+        await tryFallback();
       }
     } catch (e) {
       if (e instanceof LlmError) return err(e.code, e.message, e.status);
@@ -100,7 +110,7 @@ export async function POST(req: Request) {
           for (let n = await it.next(); !n.done; n = await it.next()) handle(n.value);
           if (!text.trim()) {
             // The provider spent the whole budget reasoning: there is no report to show, so it is an error, not a success.
-            safeStream(() => controller.enqueue(sse({ type: 'error', code: 'EMPTY_COMPLETION', message: 'El modelo no devolvió texto: puede haber gastado el presupuesto razonando. Prueba con otro modelo.' })));
+            safeStream(() => controller.enqueue(sse({ type: 'error', code: 'EMPTY_COMPLETION', message: EMPTY_MESSAGE })));
             return;
           }
           const u = usage?.usage;

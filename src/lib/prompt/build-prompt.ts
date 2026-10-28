@@ -4,7 +4,7 @@ import { estimateTokens, fence, renderSegments, segmentsToText } from './render'
 import { SYSTEM_TEMPLATE } from './templates/system';
 import { USER_TEMPLATE } from './templates/user';
 
-export const PROMPT_VERSION = 'astrolabio-prompt/1.2.0';
+export const PROMPT_VERSION = 'astrolabio-prompt/1.3.0';
 
 const TONE: Record<PromptOptions['tone'], string> = {
   neutral: 'Tono neutro y descriptivo.',
