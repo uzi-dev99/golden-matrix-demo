@@ -5,6 +5,7 @@ import { streamReport } from '@/lib/report-client';
 import { patchSession } from '@/lib/session-store';
 import type { BirthInput, ModelInfo, NatalChart, PromptOptions, PromptPreview, ReportMeta } from '@/lib/types';
 import { formatCost, formatMs, formatTokens } from './format-meta';
+import { GenerationProgress } from './GenerationProgress';
 import { ModelSelector } from './ModelSelector';
 import { PromptInspector } from './PromptInspector';
 import { ReportView } from './ReportView';
@@ -115,10 +116,20 @@ export function ReportPanel({ input }: ReportPanelProps) {
 
   const busy = phase === 'requesting' || phase === 'streaming';
 
+  const [elapsed, setElapsed] = useState(0);
+  useEffect(() => {
+    if (!busy) return;
+    const start = performance.now();
+    const timer = setInterval(() => setElapsed(performance.now() - start), 100);
+    return () => clearInterval(timer);
+  }, [busy]);
+
   const generate = async () => {
     setPhase('requesting');
     setError('');
     setText('');
+    setMeta(null);
+    setElapsed(0);
     streamed.current = '';
     const controller = new AbortController();
     abort.current = controller;
@@ -220,15 +231,17 @@ export function ReportPanel({ input }: ReportPanelProps) {
               aria-hidden="true"
             />
             <span>
-              {phase === 'streaming' || phase === 'requesting'
-                ? `Escribiendo… ${words} palabras`
-                : phase === 'done'
-                  ? `Informe completo · ${words} palabras`
-                  : phase === 'stopped'
-                    ? `Detenido · ${words} palabras`
-                    : phase === 'error'
-                      ? 'Error al generar el informe'
-                      : 'Sin informe todavía'}
+              {phase === 'requesting'
+                ? 'Esperando al modelo…'
+                : phase === 'streaming'
+                  ? `Escribiendo · ${words} palabras`
+                  : phase === 'done'
+                    ? `Informe completo · ${words} palabras`
+                    : phase === 'stopped'
+                      ? `Detenido · ${words} palabras`
+                      : phase === 'error'
+                        ? 'Error al generar el informe'
+                        : 'Sin informe todavía'}
             </span>
             {phase === 'streaming' ? (
               <button type="button" className="btn btn-secondary" onClick={stop} style={{ padding: '0 12px' }}>
@@ -237,6 +250,7 @@ export function ReportPanel({ input }: ReportPanelProps) {
             ) : null}
           </div>
         </div>
+        {busy ? <GenerationProgress waiting={phase === 'requesting'} text={text} elapsedMs={elapsed} model={model} /> : null}
         <ReportView text={text} streaming={phase === 'streaming'} />
         {error ? (
           <p className="error-text" role="alert">
