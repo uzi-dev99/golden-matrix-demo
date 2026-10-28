@@ -30,6 +30,13 @@ describe('openrouter', () => {
       reasoning: { effort: 'low', exclude: true },
     });
   });
+  test('AC10 — a concrete model is asked not to reason, so no reasoning can leak into the report', async () => {
+    vi.stubEnv('OPENROUTER_API_KEY', 'test-key-not-real');
+    const f = vi.fn(async () => sseResponse(OK_STREAM));
+    for await (const ev of streamCompletion({ model: 'nvidia/nemotron-3-ultra-550b-a55b:free', system: 's', user: 'u' }, f as unknown as typeof fetch)) void ev;
+    const [, init] = f.mock.calls[0] as unknown as [string, RequestInit];
+    expect(JSON.parse(String(init.body)).reasoning).toEqual({ enabled: false });
+  });
   test('AC10 — a reasoning delta is never content: it does not reach the client', () => {
     expect(parseChunk('{"choices":[{"delta":{"reasoning":"thinking"}}]}')).toBeNull();
     expect(parseChunk('{"choices":[{"delta":{"reasoning_content":"thinking"}}]}')).toBeNull();

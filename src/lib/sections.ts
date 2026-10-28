@@ -1,5 +1,9 @@
-/** Splits the model's markdown at "## " headings. Text before the first heading is dropped. */
+/**
+ * Splits the model's markdown at "## " headings. Text before the first heading is dropped;
+ * a report with no heading at all is kept whole as one "Informe" section.
+ */
 export function splitSections(markdown: string): { title: string; body: string }[] {
+  if (!/^## /m.test(markdown)) return markdown.trim() ? [{ title: 'Informe', body: markdown.trim() }] : [];
   return markdown
     .split(/^## /m)
     .slice(1)

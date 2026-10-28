@@ -24,6 +24,8 @@ Checks: `npm run lint`, `npm run typecheck`, `npm test`, `npm run build`, then `
 
 Docker: `docker build -t astrolabio .` and run it with the same variables (`-p 3000:3000 --env-file .env.local`).
 
+On a LAN over plain http (another machine opening `http://<server-ip>:3000`), set `SITE_URL=http://<server-ip>:3000`: the session cookie is Secure otherwise and the login would not stick. `localhost` works without it.
+
 ## Configuration
 
 See `.env.example`. Default OpenRouter model: `nvidia/nemotron-3-ultra-550b-a55b:free`. The allow-list lives in `OPENROUTER_MODELS` (comma-separated); its first entry is the default. The API key is read only on the server and never sent to the browser. Report generation is rate limited per IP (`RATE_LIMIT_PER_HOUR`, in memory).

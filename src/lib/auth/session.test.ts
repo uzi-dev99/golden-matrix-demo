@@ -31,6 +31,6 @@ describe('session cookie options', () => {
     expect(sessionCookieOptions().secure).toBe(true);
     vi.stubEnv('SITE_URL', ' HTTP://192.168.0.3:3100');
     expect(sessionCookieOptions().secure).toBe(false);
-    expect(sessionCookieOptions()).toMatchObject({ httpOnly: true, sameSite: 'lax', path: '/' });
+    expect(sessionCookieOptions()).toMatchObject({ httpOnly: true, sameSite: 'lax', path: '/', maxAge: 8 * 60 * 60 });
   });
 });
