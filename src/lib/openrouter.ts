@@ -12,7 +12,7 @@ export interface Usage {
 }
 
 export type StreamEvent =
-  | { type: 'delta'; text: string }
+  | { type: 'delta'; text: string; servedModel?: string }
   | { type: 'usage'; usage: Usage; servedModel?: string; generationId?: string };
 
 export class LlmError extends Error {
@@ -71,7 +71,8 @@ export function parseChunk(data: string): StreamEvent | null {
   }
   // The final usage chunk also carries choices[0] with no content: never assume choices is empty.
   const text = json.choices?.[0]?.delta?.content;
-  return text ? { type: 'delta', text } : null;
+  // The model that answers travels in every chunk, not only in the usage one: keep it to name the writer.
+  return text ? { type: 'delta', text, servedModel: json.model } : null;
 }
 
 export async function* streamCompletion(
