@@ -38,9 +38,19 @@ function useReveal(text: string): number {
  * window that follows the newest line, and older lines fade out at the top; when it ends the whole
  * report is shown. Scrolling up inside the window pauses the follow until the reader comes back down.
  */
-export function ReportView({ text, streaming = false }: { text: string; streaming?: boolean }) {
+export function ReportView({
+  text,
+  streaming = false,
+  onTypingChange,
+}: {
+  text: string;
+  streaming?: boolean;
+  /** Tells the panel when the text is still being revealed, so its status does not say "complete" too early. */
+  onTypingChange?: (typing: boolean) => void;
+}) {
   const shown = useReveal(text);
   const typing = streaming || shown < text.length;
+  useEffect(() => onTypingChange?.(typing), [typing, onTypingChange]);
   const box = useRef<HTMLDivElement>(null);
   const follow = useRef(true);
 

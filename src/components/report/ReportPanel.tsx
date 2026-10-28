@@ -116,6 +116,9 @@ export function ReportPanel({ input }: ReportPanelProps) {
   }, [inputKey, options]);
 
   const busy = phase === 'requesting' || phase === 'streaming';
+  const [revealing, setRevealing] = useState(false);
+  // The model may finish before the text has finished appearing: keep saying "writing" until then.
+  const writing = phase === 'streaming' || (phase === 'done' && revealing);
 
   const [elapsed, setElapsed] = useState(0);
   useEffect(() => {
@@ -238,14 +241,14 @@ export function ReportPanel({ input }: ReportPanelProps) {
                 width: 8,
                 height: 8,
                 borderRadius: '50%',
-                background: phase === 'done' ? 'var(--color-ok)' : 'var(--color-brass)',
+                background: phase === 'done' && !writing ? 'var(--color-ok)' : 'var(--color-brass)',
               }}
               aria-hidden="true"
             />
             <span>
               {phase === 'requesting'
                 ? 'Esperando al modelo…'
-                : phase === 'streaming'
+                : writing
                   ? `Escribiendo · ${words} palabras`
                   : phase === 'done'
                     ? `Informe completo · ${words} palabras`
@@ -263,7 +266,7 @@ export function ReportPanel({ input }: ReportPanelProps) {
           </div>
         </div>
         {busy ? <GenerationProgress waiting={phase === 'requesting'} text={text} elapsedMs={elapsed} model={model} /> : null}
-        <ReportView text={text} streaming={busy} />
+        <ReportView text={text} streaming={busy} onTypingChange={setRevealing} />
         {error ? (
           <p className="error-text" role="alert">
             {error}

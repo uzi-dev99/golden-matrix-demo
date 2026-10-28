@@ -21,6 +21,10 @@ const meta: ReportMeta = {
 };
 
 describe('ReportPanel defaults', () => {
+  test('AC18 — the status keeps saying "Escribiendo" until the text has finished appearing', () => {
+    expect(source).toContain("const writing = phase === 'streaming' || (phase === 'done' && revealing);");
+    expect(source).toContain('onTypingChange={setRevealing}');
+  });
   test('AC12 — the default length is short, so a free model finishes in about 30 s', () => {
     expect(source).toContain("useState<PromptOptions>({ tone: 'neutral', length: 'short' })");
   });
