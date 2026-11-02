@@ -22,6 +22,9 @@ const LABEL_TO_LIB: Record<string, string> = {
 };
 const ASPECT_DEGREE: Record<Aspect['aspect'], number> = { conjunction: 0, sextile: 60, square: 90, trine: 120, opposition: 180 };
 
+/** The wheel is drawn in light ink on the print sheet and in light ink on the dark app screens. */
+export type WheelTheme = 'light' | 'dark';
+
 /** Wheel colours come from the design tokens: hard aspects in the one brass hue, soft ones in grey. */
 export const ASPECT_COLOR: Record<Aspect['aspect'], string> = {
   conjunction: '#0b0d10',
@@ -29,6 +32,15 @@ export const ASPECT_COLOR: Record<Aspect['aspect'], string> = {
   square: '#8c5d12',
   trine: '#8a929c',
   sextile: '#8a929c',
+};
+
+/** The same map for the dark wheel: the conjunction was near-black and vanished on the dark panel. */
+export const ASPECT_COLOR_DARK: Record<Aspect['aspect'], string> = {
+  conjunction: '#e6e6ee',
+  opposition: '#e3b268',
+  square: '#e3b268',
+  trine: '#9aa1ab',
+  sextile: '#9aa1ab',
 };
 
 /** Planets and nodes keyed the way the library expects (`NNode` / `SNode` for the lunar nodes). */
@@ -41,7 +53,8 @@ export function chartToRadixData(chart: NatalChart): AstroData {
 }
 
 /** Aspects with the real position of each planet; the library draws nothing useful without it. */
-export function chartToFormedAspects(chart: NatalChart): FormedAspect[] {
+export function chartToFormedAspects(chart: NatalChart, theme: WheelTheme = 'light'): FormedAspect[] {
+  const colors = theme === 'dark' ? ASPECT_COLOR_DARK : ASPECT_COLOR;
   const pos = new Map(chart.planets.map((p) => [p.label, p.absoluteDegree]));
   return chart.aspects.flatMap((a) => {
     const n1 = LABEL_TO_LIB[a.planet1];
@@ -52,7 +65,7 @@ export function chartToFormedAspects(chart: NatalChart): FormedAspect[] {
     return [{
       point: { name: n1, position: p1 },
       toPoint: { name: n2, position: p2 },
-      aspect: { name: a.aspect, degree: ASPECT_DEGREE[a.aspect], color: ASPECT_COLOR[a.aspect], orbit: a.orb },
+      aspect: { name: a.aspect, degree: ASPECT_DEGREE[a.aspect], color: colors[a.aspect], orbit: a.orb },
       precision: '0',
     }];
   });

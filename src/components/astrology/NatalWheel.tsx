@@ -3,9 +3,9 @@
 import { useEffect, useId, useRef } from 'react';
 import type { Settings } from '@astrodraw/astrochart';
 import type { NatalChart } from '@/lib/types';
-import { chartToFormedAspects, chartToRadixData } from './to-astrochart';
+import { chartToFormedAspects, chartToRadixData, type WheelTheme } from './to-astrochart';
 
-export type WheelTheme = 'light' | 'dark';
+export type { WheelTheme };
 
 /** The print sheet is white paper; the app screens are black (GMD-2). */
 export const DEFAULT_WHEEL_THEME: WheelTheme = 'light';
@@ -53,6 +53,8 @@ export const WHEEL_PALETTES: Record<WheelTheme, Partial<Settings>> = {
       CIRCLE_COLOR: 'rgba(255, 255, 255, 0.32)',
       LINE_COLOR: 'rgba(255, 255, 255, 0.32)',
       SYMBOL_AXIS_FONT_COLOR: '#ffffff',
+      // The house numbers 1-12: the library default is #000, invisible on the dark panel.
+      CUSPS_FONT_COLOR: '#d8d8e0',
       SYMBOL_SCALE: 0.9,
     },
     '#16161c',
@@ -81,7 +83,7 @@ export function NatalWheel({
       if (cancelled) return;
       el.replaceChildren(); // StrictMode runs the effect twice; draw once
       const paper = new Chart(`wheel-${reactId}`, size, size, WHEEL_PALETTES[theme]);
-      paper.radix(chartToRadixData(chart)).aspects(chartToFormedAspects(chart));
+      paper.radix(chartToRadixData(chart)).aspects(chartToFormedAspects(chart, theme));
     })();
     return () => {
       cancelled = true;

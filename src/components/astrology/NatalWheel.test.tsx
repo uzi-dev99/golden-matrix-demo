@@ -37,5 +37,10 @@ describe('NatalWheel', () => {
     expect(luminance(WHEEL_PALETTES.dark.POINTS_COLOR)).toBeGreaterThan(0.5);
     expect(luminance(WHEEL_PALETTES.dark.SIGNS_COLOR)).toBeGreaterThan(0.5);
     expect(luminance(WHEEL_PALETTES.dark.SYMBOL_AXIS_FONT_COLOR)).toBeGreaterThan(0.5);
+    // The house numbers 1-12 come from the library default (#000): on the dark wheel they were
+    // invisible, so the dark palette sets them in light ink.
+    expect(luminance(WHEEL_PALETTES.dark.CUSPS_FONT_COLOR)).toBeGreaterThan(0.4);
+    // The light palette leaves them alone: the print sheet keeps the library default.
+    expect(WHEEL_PALETTES.light.CUSPS_FONT_COLOR).toBeUndefined();
   });
 });
