@@ -422,6 +422,8 @@ body { font-family: var(--font-sans); font-size: 14px; line-height: 1.5; font-va
 
 .hero__note code {
   color: var(--text);
+  /* The note is uppercase, but the credentials must stay exactly as the login compares them. */
+  text-transform: none;
 }
 
 .hero__aside {

@@ -18,6 +18,15 @@ describe('login page', () => {
     vi.unstubAllEnvs();
   });
 
+  test('AC2 — the credentials printed in the note are the ones the login accepts', async () => {
+    vi.stubEnv('DEMO_PASSWORD', 'astrolabio-demo');
+    vi.stubEnv('DEMO_USER', 'demo');
+    const html = renderToStaticMarkup(await LoginPage());
+    expect(html).toContain('<code>demo</code>');
+    expect(html).toContain('<code>astrolabio-demo</code>');
+    vi.unstubAllEnvs();
+  });
+
   test('AC1 — the hero is the video, the nav and the legal line, with Astrolabio branding', async () => {
     vi.stubEnv('DEMO_PASSWORD', 'astrolabio-demo');
     const html = renderToStaticMarkup(await LoginPage());

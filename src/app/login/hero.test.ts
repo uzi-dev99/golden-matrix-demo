@@ -20,4 +20,8 @@ describe('login hero styles', () => {
     expect(css).toMatch(/@media \(max-width:\s*720px\)/);
     expect(css).toMatch(/\.hero__media\s*\{[^}]*height:\s*46svh/);
   });
+
+  test('AC2 — the credentials in the note keep their case: the login compares them case-sensitively', () => {
+    expect(css).toMatch(/\.hero__note code\s*\{[^}]*text-transform:\s*none/);
+  });
 });
