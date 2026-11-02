@@ -8,9 +8,11 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   const session = await verifySession(token, sessionSecret());
 
   return (
-    <div className="mx-auto w-full max-w-[1200px] px-4">
-      <AppHeader user={session?.user ?? 'demo'} />
-      {children}
+    <div className="app-shell">
+      <div className="mx-auto w-full max-w-[1200px] px-4">
+        <AppHeader user={session?.user ?? 'demo'} />
+        {children}
+      </div>
     </div>
   );
 }

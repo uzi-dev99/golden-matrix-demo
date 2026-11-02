@@ -55,8 +55,8 @@ body { font-family: var(--font-sans); font-size: 14px; line-height: 1.5; font-va
 
 /* ------------------------------------------------------------------------------------------------
    Astrolabio identity — the dark cinematic hero of /login (GMD-1).
-   Composition and tokens follow _project/refs/echoid-hero-prompt.md, adapted to the Astrolabio
-   name and the demo login. Scoped to .hero: the app screens keep the ledger look until GMD-2.
+   Composition and tokens follow the identity reference of GMD-1, adapted to the Astrolabio name
+   and the demo login. Scoped to .hero: the app screens get their own scope in GMD-2.
 ------------------------------------------------------------------------------------------------- */
 .hero {
   --bg: #000000;
@@ -553,4 +553,187 @@ body { font-family: var(--font-sans); font-size: 14px; line-height: 1.5; font-va
   .hero__media video { display: none; }
   .hero__menu-link,
   .hero__menu-cta { transition-delay: 0ms; }
+}
+
+/* ------------------------------------------------------------------------------------------------
+   Astrolabio identity — the app screens (GMD-2).
+   The tokens of the login hero (GMD-1) lifted to the app scope: black ground, glass panels, mono
+   labels. Scoped to .app-shell, so /login and the /print sheet keep their own look.
+------------------------------------------------------------------------------------------------- */
+.app-shell {
+  --color-ground: #050506;
+  --color-surface: #121218;
+  --color-raised: rgba(255, 255, 255, 0.07);
+  --color-line: rgba(255, 255, 255, 0.16);
+  --color-rule: rgba(255, 255, 255, 0.09);
+  --color-control: rgba(255, 255, 255, 0.3);
+  --color-ink: #ffffff;
+  --color-muted: rgba(255, 255, 255, 0.72);
+  --color-brass: #e3b268;
+  --color-brass-ink: #f2d6a5;
+  --color-brass-soft: rgba(227, 178, 104, 0.18);
+  --color-danger: #ff9a94;
+  --color-ok: #7ee2a8;
+  --radius-card: 0px;
+  --radius-control: 0px;
+  --font-sans: var(--font-sora), "Helvetica Neue", Helvetica, Arial, sans-serif;
+  --font-mono: var(--font-jetbrains), ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+
+  min-height: 100vh;
+  background: var(--color-ground);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* The canvas behind the app screens. The print sheet and the login keep the light ground. */
+html:has(.app-shell) {
+  background: #050506;
+  color: #ffffff;
+}
+
+/* Panels: glass over the black ground. */
+.app-shell .panel {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--color-line);
+  border-radius: 0;
+  backdrop-filter: blur(14px);
+}
+
+/* Type: Sora for the reading, JetBrains Mono for the labels. */
+.app-shell label,
+.app-label {
+  font-family: var(--font-mono);
+  font-weight: 400;
+  font-size: 11px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--color-muted);
+}
+
+/* The buttons carry a fixed label, so the mono caps never touch typed data. */
+.app-shell .btn {
+  font-family: var(--font-mono);
+  font-weight: 400;
+  font-size: 11px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  border-radius: 0;
+}
+
+.app-shell .btn-primary {
+  background: var(--color-ink);
+  color: var(--color-ground);
+}
+
+.app-shell .btn-primary:hover {
+  background: #d9d9de;
+}
+
+.app-shell .btn-secondary {
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--color-ink);
+  border: 1px solid var(--color-line);
+}
+
+.app-shell .btn-secondary:hover {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.app-shell .btn-text {
+  color: var(--color-muted);
+}
+
+/* Fields: the user types here, so the case is never touched. */
+.app-shell .input {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--color-control);
+  border-radius: 0;
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  text-transform: none;
+}
+
+.app-shell .input::placeholder {
+  color: var(--color-muted);
+}
+
+.app-shell .input:focus {
+  border-color: rgba(255, 255, 255, 0.55);
+}
+
+.app-shell option {
+  background: #101014;
+  color: #ffffff;
+}
+
+.app-shell input[type='date']::-webkit-calendar-picker-indicator,
+.app-shell input[type='time']::-webkit-calendar-picker-indicator {
+  filter: invert(1);
+  opacity: 0.7;
+}
+
+/* Tables: the column names are fixed labels. */
+.app-shell th {
+  font-family: var(--font-mono);
+  font-weight: 400;
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--color-muted);
+}
+
+.app-shell .prose-report {
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.app-shell .prose-report h2 {
+  font-weight: 300;
+}
+
+.app-shell .prose-report a {
+  color: var(--color-brass-ink);
+}
+
+/* The map: the street tiles are dark, so they do not punch a white hole in the screen. */
+.app-shell .leaflet-container {
+  background: #0c0c10;
+  font-family: var(--font-mono);
+  font-size: 10px;
+}
+
+.app-shell .leaflet-tile-pane {
+  filter: invert(1) hue-rotate(180deg) grayscale(1) brightness(0.72) contrast(1.1);
+}
+
+.app-shell .leaflet-container .leaflet-control-attribution {
+  background: rgba(0, 0, 0, 0.62);
+  color: rgba(255, 255, 255, 0.72);
+}
+
+.app-shell .leaflet-control-attribution a {
+  color: #ffffff;
+}
+
+.app-shell .leaflet-container .leaflet-control-zoom a {
+  background: #14141a;
+  color: #ffffff;
+  border-color: var(--color-line);
+}
+
+/* Scrollbars belong to the palette too. */
+html:has(.app-shell),
+.app-shell {
+  scrollbar-color: rgba(255, 255, 255, 0.25) transparent;
+}
+
+html:has(.app-shell)::-webkit-scrollbar,
+.app-shell ::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+html:has(.app-shell)::-webkit-scrollbar-thumb,
+.app-shell ::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
 }
