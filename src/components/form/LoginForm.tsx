@@ -3,6 +3,23 @@
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 
+/** Posts the demo credentials to the login API. Exported so the endpoint is pinned by a test. */
+export async function postLogin(
+  values: { user: string; password: string },
+  doFetch: typeof fetch = fetch,
+): Promise<{ ok: boolean; error: string }> {
+  const res = await doFetch('/api/login', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(values),
+  });
+  if (!res.ok) {
+    const body = (await res.json().catch(() => null)) as { error?: { message?: string } } | null;
+    return { ok: false, error: body?.error?.message ?? 'No se pudo iniciar sesión' };
+  }
+  return { ok: true, error: '' };
+}
+
 export function LoginForm({ user, password }: { user: string; password: string }) {
   const router = useRouter();
   const [values, setValues] = useState({ user: '', password: '' });
@@ -14,14 +31,9 @@ export function LoginForm({ user, password }: { user: string; password: string }
     setError('');
     setBusy(true);
     try {
-      const res = await fetch('/api/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(values),
-      });
+      const res = await postLogin(values);
       if (!res.ok) {
-        const body = (await res.json().catch(() => null)) as { error?: { message?: string } } | null;
-        setError(body?.error?.message ?? 'No se pudo iniciar sesión');
+        setError(res.error);
         return;
       }
       router.replace('/');
@@ -33,64 +45,60 @@ export function LoginForm({ user, password }: { user: string; password: string }
   }
 
   return (
-    <section className="panel" aria-labelledby="login-title">
-      <h2 id="login-title" className="mb-4 text-lg font-semibold">Entrar a la demo</h2>
-
-      <div className="mb-5 rounded-[6px] bg-brass-soft p-4">
-        <b>Credenciales de la demo</b>
-        <p className="mt-1 text-[13px]">
-          Usuario <code className="font-mono">{user}</code> · contraseña <code className="font-mono">{password}</code>
-        </p>
-        <button type="button" className="btn btn-text mt-2" onClick={() => setValues({ user, password })}>
-          Rellenar los campos
-        </button>
-      </div>
-
-      <form onSubmit={submit} className="grid gap-4" noValidate>
-        <div className="field">
+    <>
+      <form onSubmit={submit} className="hero__form" aria-label="Acceso a la demo" noValidate>
+        <div className="hero__field">
           <label htmlFor="u">Usuario</label>
           <input
             id="u"
-            className="input"
+            name="user"
+            className="hero__input"
             autoComplete="username"
+            placeholder="Usuario"
             value={values.user}
             aria-invalid={error ? true : undefined}
             onChange={(e) => setValues((v) => ({ ...v, user: e.target.value }))}
           />
         </div>
-        <div className="field">
+        <div className="hero__field">
           <label htmlFor="p">Contraseña</label>
           <input
             id="p"
+            name="password"
             type="password"
-            className="input"
+            className="hero__input"
             autoComplete="current-password"
-            aria-describedby="perr"
+            placeholder="Contraseña"
             value={values.password}
             aria-invalid={error ? true : undefined}
+            aria-describedby="perr"
             onChange={(e) => setValues((v) => ({ ...v, password: e.target.value }))}
           />
         </div>
         {error && (
-          <p id="perr" role="alert" className="error-text">
+          <p id="perr" role="alert" className="hero__error">
             {error}
           </p>
         )}
-        <button type="submit" className="btn btn-primary w-full" disabled={busy}>
+        <button type="submit" className="hero__btn hero__btn--solid" disabled={busy}>
           Entrar
         </button>
       </form>
 
-      <p className="hint mt-4">
-        Sin cuentas reales ni base de datos: la sesión es una cookie firmada que caduca en 8 horas.
+      <p className="hero__note">
+        Credenciales de la demo · usuario <code>{user}</code> · contraseña <code>{password}</code>
       </p>
-      <p className="hint mt-2">
-        ¿Prefieres la API? La carta y el informe también se generan con un token:{' '}
-        <a href="/docs" className="text-ink underline">
+      <button type="button" className="btn-text hero__aside" onClick={() => setValues({ user, password })}>
+        Rellenar los campos
+      </button>
+
+      <p className="hero__note">
+        La carta y el informe también se generan con un token:{' '}
+        <a className="hero__textlink" href="/docs">
           documentación de la API
         </a>
         .
       </p>
-    </section>
+    </>
   );
 }
