@@ -1,6 +1,11 @@
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import { describe, expect, test } from 'vitest';
+import { describe, expect, test, vi } from 'vitest';
+import { renderToStaticMarkup } from 'react-dom/server';
+import { POSTER_URL, VIDEO_URL } from '@/components/login/media';
+import LoginPage from './page';
+
+vi.mock('next/navigation', () => ({ useRouter: () => ({ replace: vi.fn(), push: vi.fn(), refresh: vi.fn() }) }));
 
 const css = readFileSync(fileURLToPath(new URL('../globals.css', import.meta.url)), 'utf8');
 
@@ -23,5 +28,29 @@ describe('login hero styles', () => {
 
   test('AC2 — the credentials in the note keep their case: the login compares them case-sensitively', () => {
     expect(css).toMatch(/\.hero__note code\s*\{[^}]*text-transform:\s*none/);
+  });
+});
+
+describe('login hero media', () => {
+  test('AC3 — the mp4 is not downloaded when the motion is reduced: the source is gated by the media query', async () => {
+    vi.stubEnv('DEMO_PASSWORD', 'astrolabio-demo');
+    const html = renderToStaticMarkup(await LoginPage());
+    // The browser skips a source whose media query does not match: with reduced motion the
+    // 5.3 MB mp4 is never fetched (the poster paints the frame).
+    expect(html).toMatch(/<source[^>]*media="\(prefers-reduced-motion: no-preference\)"/);
+    expect(html).toContain(VIDEO_URL);
+    // A src attribute on the video would be fetched whatever the motion preference is.
+    expect(html).not.toMatch(/<video[^>]*\ssrc=/);
+    vi.unstubAllEnvs();
+  });
+
+  test('AC6 — the poster is painted twice, so a video that fails leaves the frame on screen', async () => {
+    vi.stubEnv('DEMO_PASSWORD', 'astrolabio-demo');
+    const html = renderToStaticMarkup(await LoginPage());
+    // The container paints the poster as its background and the video carries it as its poster:
+    // the media element has no error handler, the fallback does not need one.
+    expect(html).toContain(`background-image:url(${POSTER_URL})`);
+    expect(html).toMatch(/<video[^>]*poster="[^"]*"/);
+    vi.unstubAllEnvs();
   });
 });

@@ -109,6 +109,30 @@ describe('app identity (GMD-2)', () => {
   test('AC3 — the map tiles are dark in the app screens', () => {
     expect(css).toMatch(/\.app-shell \.leaflet-tile-pane\s*\{[^}]*filter:/);
   });
+
+  test('AC8 — the native popups of the app screens are dark', () => {
+    // The date/time picker and the select list are drawn by the browser: they follow the
+    // color-scheme of the box they open in.
+    expect(scope).toMatch(/color-scheme:\s*dark/);
+    // /print and /login live outside .app-shell: they keep the light scheme.
+    expect(printCss).not.toContain('color-scheme');
+    expect(css).not.toMatch(/^html\s*\{[^}]*color-scheme/m);
+  });
+
+  test('AC8 — the picker icon of the dark app stays visible', () => {
+    // With color-scheme: dark the browser draws the calendar icon light: inverting it would hide it.
+    const rule = css.match(/\.app-shell input\[type='date'\][^{]*\{[^}]*\}/)?.[0] ?? '';
+    expect(rule).not.toBe('');
+    expect(rule).not.toMatch(/filter:\s*invert/);
+  });
+});
+
+describe('login hero motion (GMD-3)', () => {
+  test('AC14 — the stagger of the panel has one rule per child', () => {
+    // The panel has four children (chip, title, tagline and the form).
+    const rules = css.match(/\.hero__panel\s*>\s*:nth-child\(\d+\)\s*\{[^}]*\}/g) ?? [];
+    expect(rules.length).toBe(4);
+  });
 });
 
 describe('app icon', () => {

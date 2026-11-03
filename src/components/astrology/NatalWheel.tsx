@@ -41,6 +41,8 @@ export const WHEEL_PALETTES: Record<WheelTheme, Partial<Settings>> = {
       CIRCLE_COLOR: '#8a929c',
       LINE_COLOR: '#8a929c',
       SYMBOL_AXIS_FONT_COLOR: '#0b0d10',
+      // The library merges the settings into its module defaults: set the house numbers explicitly.
+      CUSPS_FONT_COLOR: '#000',
       SYMBOL_SCALE: 0.9,
     },
     '#e7eaee',

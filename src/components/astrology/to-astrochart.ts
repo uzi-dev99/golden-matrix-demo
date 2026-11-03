@@ -22,7 +22,7 @@ const LABEL_TO_LIB: Record<string, string> = {
 };
 const ASPECT_DEGREE: Record<Aspect['aspect'], number> = { conjunction: 0, sextile: 60, square: 90, trine: 120, opposition: 180 };
 
-/** The wheel is drawn in light ink on the print sheet and in light ink on the dark app screens. */
+/** The print sheet is white paper (dark ink); the app screens are black (light ink). */
 export type WheelTheme = 'light' | 'dark';
 
 /** Wheel colours come from the design tokens: hard aspects in the one brass hue, soft ones in grey. */

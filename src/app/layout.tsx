@@ -21,9 +21,6 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="es" className={`${GeistSans.variable} ${GeistMono.variable} ${sora.variable} ${jetbrains.variable}`}>
-      <head>
-        <link rel="preconnect" href="https://d8j0ntlcm91z4.cloudfront.net" />
-      </head>
       <body>{children}</body>
     </html>
   );
