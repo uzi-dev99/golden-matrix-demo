@@ -1,5 +1,6 @@
-import { readFileSync } from 'node:fs';
+import { readdirSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
+import { join } from 'node:path';
 import { describe, expect, test, vi } from 'vitest';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { POSTER_URL, VIDEO_URL } from '@/components/login/media';
@@ -7,7 +8,16 @@ import LoginPage from './page';
 
 vi.mock('next/navigation', () => ({ useRouter: () => ({ replace: vi.fn(), push: vi.fn(), refresh: vi.fn() }) }));
 
-const layoutSource = readFileSync(fileURLToPath(new URL('../layout.tsx', import.meta.url)), 'utf8');
+/** Every layout of the app: the CDN preconnect must not live in one of them. */
+function layouts(dir: string): { file: string; source: string }[] {
+  return readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
+    const full = join(dir, entry.name);
+    if (entry.isDirectory()) return layouts(full);
+    return entry.name === 'layout.tsx' ? [{ file: full, source: readFileSync(full, 'utf8') }] : [];
+  });
+}
+
+const appLayouts = layouts(fileURLToPath(new URL('..', import.meta.url)));
 
 // The brand of the source project must not be in this public repo. The strings are built from
 // parts so the repo-wide grep stays clean (AC2).
@@ -52,19 +62,26 @@ describe('login page', () => {
   test('AC4 — the legal line has no dead anchors: there are no privacy or terms pages', async () => {
     vi.stubEnv('DEMO_PASSWORD', 'astrolabio-demo');
     const html = renderToStaticMarkup(await LoginPage());
-    expect(html).not.toContain('#privacidad');
-    expect(html).not.toContain('#condiciones');
-    expect(html).toContain('aviso de privacidad');
-    expect(html).toContain('condiciones de servicio');
+    const legal = html.match(/<footer class="hero__legal">([\s\S]*?)<\/footer>/)?.[1] ?? '';
+    expect(legal).not.toBe('');
+    // The legal line is plain text: any anchor would be a dead link (this demo has no privacy or
+    // terms pages), and a hash to nowhere would look like one.
+    expect(legal).not.toMatch(/<a[\s>]/);
+    expect(legal).toContain('aviso de privacidad');
+    expect(legal).toContain('condiciones de servicio');
     vi.unstubAllEnvs();
   });
 
-  test('AC5 — the CDN preconnect belongs to /login, not to the root layout', async () => {
+  test('AC5 — the CDN preconnect belongs to /login, not to a layout', async () => {
     vi.stubEnv('DEMO_PASSWORD', 'astrolabio-demo');
     const html = renderToStaticMarkup(await LoginPage());
     expect(html).toContain('rel="preconnect"');
     expect(html).toContain('d8j0ntlcm91z4.cloudfront.net');
-    expect(layoutSource).not.toContain('preconnect');
+    // No layout carries the link: it belongs to the page that loads the media.
+    expect(appLayouts.length).toBeGreaterThan(0);
+    for (const layout of appLayouts) {
+      expect(layout.source, layout.file).not.toContain('preconnect');
+    }
     vi.unstubAllEnvs();
   });
 

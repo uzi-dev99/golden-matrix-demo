@@ -1,10 +1,11 @@
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { renderToStaticMarkup } from 'react-dom/server';
-import { describe, expect, test } from 'vitest';
+import { afterEach, describe, expect, test, vi } from 'vitest';
 import { madridChart } from '@/components/shell/chart-fixture.test-utils';
 import { ASPECT_COLOR_DARK, chartToFormedAspects } from './to-astrochart';
 import {
+  attachTilt,
   DEFAULT_WHEEL_THEME,
   MAX_TILT_DEG,
   NatalWheel,
@@ -12,6 +13,7 @@ import {
   tiltEnabled,
   WHEEL_LAYERS,
   WHEEL_PALETTES,
+  wrapPlanets,
 } from './NatalWheel';
 
 const source = readFileSync(fileURLToPath(new URL('./NatalWheel.tsx', import.meta.url)), 'utf8');
@@ -53,6 +55,99 @@ function mediaBlock(source: string, condition: string): string {
 function depthOf(layer: string): number {
   const found = plainCss.match(new RegExp(`\\[data-layer='${layer}'\\][^{]*\\{[^}]*--depth:\\s*(\\d+)px`));
   return found ? Number(found[1]) : 0;
+}
+
+/** The fake element the tilt writes on: a box to read and two CSS variables to write. */
+function fakeWheel(box: { left: number; top: number; width: number; height: number }) {
+  const props: Record<string, string> = {};
+  const listeners: Record<string, ((event: unknown) => void)[]> = {};
+  return {
+    props,
+    style: {
+      setProperty: (name: string, value: string) => {
+        props[name] = value;
+      },
+    },
+    getBoundingClientRect: () => box,
+    addEventListener: (type: string, listener: (event: unknown) => void) => {
+      (listeners[type] ??= []).push(listener);
+    },
+    removeEventListener: (type: string, listener: (event: unknown) => void) => {
+      listeners[type] = (listeners[type] ?? []).filter((one) => one !== listener);
+    },
+    fire: (type: string, event: unknown) => {
+      for (const listener of listeners[type] ?? []) listener(event);
+    },
+  };
+}
+
+/** The frames the tilt waits for: the test runs them by hand. */
+function fakeFrames() {
+  const frames = new Map<number, () => void>();
+  let next = 1;
+  vi.stubGlobal('requestAnimationFrame', (callback: () => void) => {
+    const id = next++;
+    frames.set(id, callback);
+    return id;
+  });
+  vi.stubGlobal('cancelAnimationFrame', (id: number) => {
+    frames.delete(id);
+  });
+  return () => {
+    const pending = [...frames.values()];
+    frames.clear();
+    for (const callback of pending) callback();
+  };
+}
+
+/** The minimum DOM the planet wrapper needs: a group, its children and the node moves. */
+type FakeNode = {
+  tag: string;
+  id: string;
+  namespaceURI: string;
+  attrs: Record<string, string>;
+  children: FakeNode[];
+  parent: FakeNode | null;
+  appendChild(child: FakeNode): void;
+  replaceWith(next: FakeNode): void;
+  setAttribute(name: string, value: string): void;
+  getAttribute(name: string): string | null;
+  querySelectorAll(selector: string): FakeNode[];
+};
+
+function fakeNode(tag: string, id = ''): FakeNode {
+  const node: FakeNode = {
+    tag,
+    id,
+    namespaceURI: 'http://www.w3.org/2000/svg',
+    attrs: {},
+    children: [],
+    parent: null,
+    appendChild(child) {
+      child.parent = node;
+      node.children.push(child);
+    },
+    replaceWith(next) {
+      const parent = node.parent;
+      if (!parent) return;
+      parent.children[parent.children.indexOf(node)] = next;
+      next.parent = parent;
+      node.parent = null;
+    },
+    setAttribute(name, value) {
+      node.attrs[name] = value;
+    },
+    getAttribute(name) {
+      return node.attrs[name] ?? null;
+    },
+    querySelectorAll(selector) {
+      // The library draws the planets in a group whose id ends with "-radix-planets".
+      if (!selector.includes('-radix-planets')) return [];
+      const group = node.children.find((child) => child.id.endsWith('-radix-planets'));
+      return group ? group.children : [];
+    },
+  };
+  return node;
 }
 
 describe('NatalWheel', () => {
@@ -100,8 +195,10 @@ describe('NatalWheel', () => {
 
   test('AC12 — the wheel passes its theme to the aspects', () => {
     // The drawing happens in the browser (no DOM test library here): the wiring is pinned in
-    // the source, and the argument is what changes the colours.
-    expect(source).toMatch(/chartToFormedAspects\(\s*chart,\s*theme\s*\)/);
+    // the source, and the argument is what changes the colours. The comments are stripped first:
+    // a commented-out call would satisfy a plain regex.
+    const code = source.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '');
+    expect(code).toMatch(/\.aspects\(\s*chartToFormedAspects\(\s*chart\s*,\s*[\w.]*theme\s*\)\s*\)/);
     expect(chartToFormedAspects(madridChart)).not.toEqual(chartToFormedAspects(madridChart, 'dark'));
   });
 });
@@ -173,14 +270,6 @@ describe('NatalWheel in 3D (VK-526)', () => {
     expect(plainCss).toMatch(/@keyframes wheel-enter\s*\{[^}]*transform:/);
   });
 
-  test('AC1 — the pointer moves the wheel', () => {
-    // The drawing happens in the browser (no DOM test library here): the wiring is pinned in
-    // the source, and the clamp is the tested function.
-    expect(source).toMatch(/addEventListener\('pointermove'/);
-    expect(source).toMatch(/--tilt-x/);
-    expect(source).toMatch(/tiltEnabled\(/);
-  });
-
   test('AC2 — on the worst-case panel the aspects read at 3:1 and the house numbers at 4.5:1', () => {
     // The panel behind the wheel can be as light as #3a3a3b (card 525).
     const panel = '#3a3a3b';
@@ -196,5 +285,80 @@ describe('NatalWheel in 3D (VK-526)', () => {
     // Only the dark theme is split into layers: the print sheet draws the same flat wheel.
     expect(source).toMatch(/theme === 'dark'/);
     expect(plainCss).toMatch(/\[data-theme='dark'\]/);
+  });
+});
+
+describe('the pointer tilt (VK-535)', () => {
+  afterEach(() => vi.unstubAllGlobals());
+
+  test('the pointer moves the wheel: the tilt follows the pointer', () => {
+    const runFrame = fakeFrames();
+    const el = fakeWheel({ left: 0, top: 0, width: 100, height: 100 });
+    attachTilt(el as unknown as HTMLElement);
+    el.fire('pointermove', { clientX: 100, clientY: 100 });
+    runFrame();
+    // The pointer at the bottom right corner tips the wheel 12 degrees towards it.
+    expect(el.props['--tilt-x']).toBe('12deg');
+    expect(el.props['--tilt-y']).toBe('-12deg');
+  });
+
+  test('the wheel faces the viewer again when the pointer leaves it', () => {
+    const runFrame = fakeFrames();
+    const el = fakeWheel({ left: 0, top: 0, width: 100, height: 100 });
+    attachTilt(el as unknown as HTMLElement);
+    el.fire('pointermove', { clientX: 100, clientY: 100 });
+    runFrame();
+    el.fire('pointerleave', {});
+    expect(el.props['--tilt-x']).toBe('0deg');
+    expect(el.props['--tilt-y']).toBe('0deg');
+  });
+
+  test('a wheel with no size does not tilt', () => {
+    const runFrame = fakeFrames();
+    const el = fakeWheel({ left: 0, top: 0, width: 0, height: 0 });
+    attachTilt(el as unknown as HTMLElement);
+    el.fire('pointermove', { clientX: 100, clientY: 100 });
+    runFrame();
+    expect(el.props['--tilt-x']).toBeUndefined();
+    expect(el.props['--tilt-y']).toBeUndefined();
+  });
+
+  test('the tilt is written once per frame, not once per pointer event', () => {
+    const runFrame = fakeFrames();
+    const el = fakeWheel({ left: 0, top: 0, width: 100, height: 100 });
+    const reads = vi.spyOn(el, 'getBoundingClientRect');
+    attachTilt(el as unknown as HTMLElement);
+    el.fire('pointermove', { clientX: 100, clientY: 100 });
+    el.fire('pointermove', { clientX: 0, clientY: 0 });
+    // Nothing is written before the frame: the box is read once for the two events.
+    expect(el.props['--tilt-x']).toBeUndefined();
+    runFrame();
+    expect(reads).toHaveBeenCalledTimes(1);
+    // The last position of the pointer wins.
+    expect(el.props['--tilt-x']).toBe('-12deg');
+    expect(el.props['--tilt-y']).toBe('12deg');
+  });
+});
+
+describe('the planet wrapper (VK-526)', () => {
+  afterEach(() => vi.unstubAllGlobals());
+
+  test('the planet keeps its place: the animation runs on a wrapper without transform', () => {
+    const svg = fakeNode('svg');
+    const group = fakeNode('g', 'chart-radix-planets');
+    const planet = fakeNode('g', 'planet-sun');
+    planet.setAttribute('transform', 'translate(120, 240)');
+    group.appendChild(planet);
+    svg.appendChild(group);
+    vi.stubGlobal('document', { createElementNS: (_ns: string, tag: string) => fakeNode(tag) });
+    wrapPlanets(svg as unknown as SVGSVGElement);
+    // The planet is inside a wrapper, and the wrapper carries no transform of its own: the motion
+    // layer grows the wrapper in place and the symbol keeps the place the library gave it.
+    expect(group.children.length).toBe(1);
+    const wrapper = group.children[0];
+    expect(wrapper.getAttribute('transform')).toBeNull();
+    expect(wrapper.children.length).toBe(1);
+    expect(wrapper.children[0]).toBe(planet);
+    expect(planet.getAttribute('transform')).toBe('translate(120, 240)');
   });
 });
