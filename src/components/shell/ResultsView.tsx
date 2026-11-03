@@ -28,7 +28,11 @@ export function ResultsView({ input, chart }: { input: BirthInput; chart: NatalC
 
       <div className="grid gap-3 lg:grid-cols-[5fr_7fr] lg:items-start">
         <div className="grid gap-3">
-          <section className="panel" aria-labelledby="titulo-carta">
+          <section
+            className="panel motion-rise"
+            style={{ '--motion-delay': '160ms' } as React.CSSProperties}
+            aria-labelledby="titulo-carta"
+          >
             <div className="flex flex-wrap items-baseline justify-between gap-2">
               <h2 id="titulo-carta" className="text-base font-normal">Carta natal</h2>
               <span className="hint">Placidus · {formatDate(input.date)} {input.time} UTC</span>
@@ -51,7 +55,11 @@ export function ResultsView({ input, chart }: { input: BirthInput; chart: NatalC
             ))}
           </section>
 
-          <section className="panel" aria-labelledby="titulo-posiciones">
+          <section
+            className="panel motion-rise"
+            style={{ '--motion-delay': '240ms' } as React.CSSProperties}
+            aria-labelledby="titulo-posiciones"
+          >
             <div className="flex flex-wrap items-center justify-between gap-2">
               <h2 id="titulo-posiciones" className="text-base font-normal">Posiciones</h2>
               <div role="tablist" aria-label="Tabla de posiciones" className="flex gap-1">

@@ -22,6 +22,13 @@
   --font-mono: var(--font-geist-mono), ui-monospace, monospace;
 }
 
+/* Motion tokens (GMD-3): the premium curve of the identity and the durations of the entrances. */
+:root {
+  --ease-premium: cubic-bezier(0.16, 1, 0.3, 1);
+  --dur-enter: 420ms;
+  --dur-reveal: 700ms;
+}
+
 html { background: var(--color-ground); color: var(--color-ink); }
 body { font-family: var(--font-sans); font-size: 14px; line-height: 1.5; font-variant-numeric: tabular-nums; }
 :focus-visible { outline: 2px solid var(--color-ink); outline-offset: 2px; }
@@ -68,7 +75,6 @@ body { font-family: var(--font-sans); font-size: 14px; line-height: 1.5; font-va
   --fill-ghost: rgba(255, 255, 255, 0.05);
   --fill-solid: rgba(255, 255, 255, 0.1);
   --gutter: clamp(20px, 5vw, 100px);
-  --ease-premium: cubic-bezier(0.16, 1, 0.3, 1);
   --font-display: var(--font-sora), "Helvetica Neue", Helvetica, Arial, sans-serif;
   --font-ui: var(--font-jetbrains), ui-monospace, "SF Mono", Menlo, Consolas, monospace;
 
@@ -736,4 +742,78 @@ html:has(.app-shell)::-webkit-scrollbar,
 html:has(.app-shell)::-webkit-scrollbar-thumb,
 .app-shell ::-webkit-scrollbar-thumb {
   background: rgba(255, 255, 255, 0.2);
+}
+
+/* ------------------------------------------------------------------------------------------------
+   Motion layer (GMD-3). Every entrance runs once, on mount, and moves transform/opacity only.
+   The declarations live inside `prefers-reduced-motion: no-preference`: with reduced motion the
+   browser computes `animation-name: none` and the content is simply there.
+------------------------------------------------------------------------------------------------- */
+@keyframes motion-rise {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+}
+
+@keyframes motion-pop {
+  from {
+    opacity: 0;
+    /* The library positions the planets with an SVG `transform` attribute: animating `transform`
+       here would replace it and the symbol would fly in from the corner. The independent `scale`
+       property composes with it, so the planet grows in place. */
+    scale: 0.85;
+  }
+}
+
+@keyframes motion-fade {
+  from {
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  /* The standard entrance: the screens and their cards arrive with a small stagger. */
+  .motion-rise {
+    animation: motion-rise var(--dur-enter) var(--ease-premium) both;
+    animation-delay: var(--motion-delay, 0ms);
+  }
+
+  /* The login hero: the nav first, then the panel, then its blocks one after the other. */
+  .hero__nav {
+    animation: motion-rise 520ms var(--ease-premium) both;
+  }
+
+  .hero__panel {
+    animation: motion-rise 560ms var(--ease-premium) 120ms both;
+  }
+
+  .hero__panel > * {
+    animation: motion-rise 460ms var(--ease-premium) both;
+  }
+
+  .hero__panel > :nth-child(1) { animation-delay: 180ms; }
+  .hero__panel > :nth-child(2) { animation-delay: 240ms; }
+  .hero__panel > :nth-child(3) { animation-delay: 300ms; }
+  .hero__panel > :nth-child(4) { animation-delay: 360ms; }
+  .hero__panel > :nth-child(5) { animation-delay: 420ms; }
+  .hero__panel > :nth-child(6) { animation-delay: 480ms; }
+  .hero__panel > :nth-child(7) { animation-delay: 540ms; }
+
+  /* The natal wheel: the planets pop in one by one, the aspects fade in as a layer over them. */
+  .app-shell .wheel {
+    animation: motion-rise var(--dur-reveal) var(--ease-premium) both;
+  }
+
+  .app-shell .wheel [id$='-radix-planets'] > g {
+    transform-box: fill-box;
+    transform-origin: center;
+    animation: motion-pop 420ms var(--ease-premium) both;
+    animation-delay: calc(300ms + var(--i, 0) * 45ms);
+  }
+
+  .app-shell .wheel [id$='-aspects'] > line {
+    animation: motion-fade 600ms var(--ease-premium) both;
+    animation-delay: 620ms;
+  }
 }

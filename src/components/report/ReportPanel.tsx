@@ -188,7 +188,11 @@ export function ReportPanel({ input }: ReportPanelProps) {
 
   return (
     <>
-      <section className="panel" aria-label="Prompt del modelo">
+      <section
+        className="panel motion-rise"
+        style={{ '--motion-delay': '200ms' } as React.CSSProperties}
+        aria-label="Prompt del modelo"
+      >
         <PromptInspector preview={preview} />
         <div className={styles.opts}>
           <div className="field" style={{ margin: 0 }}>
@@ -233,7 +237,13 @@ export function ReportPanel({ input }: ReportPanelProps) {
         </div>
       </section>
 
-      <section ref={reportSection} className="panel" aria-label="Informe" aria-live="polite">
+      <section
+        ref={reportSection}
+        className="panel motion-rise"
+        style={{ '--motion-delay': '280ms' } as React.CSSProperties}
+        aria-label="Informe"
+        aria-live="polite"
+      >
         <div className={styles.panelHead}>
           <h2 className={styles.panelH}>Informe</h2>
           <div className={styles.status}>

@@ -11,6 +11,11 @@
   overflow: auto;
 }
 
+/* The tail of the live text glows while the model writes, and the caret pulses with it. */
+.reveal[data-typing] > :last-child {
+  text-shadow: 0 0 18px var(--color-brass-soft);
+}
+
 /* The caret follows the last line of text while the report is being written. */
 .reveal[data-typing] > :last-child::after {
   content: '';
@@ -18,14 +23,15 @@
   width: 2px;
   height: 1.05em;
   background: var(--color-ink);
+  box-shadow: 0 0 8px 1px var(--color-brass);
   vertical-align: -0.15em;
   margin-left: 1px;
-  animation: blink 1s steps(2) infinite;
+  animation: caret-pulse 1.1s ease-in-out infinite;
 }
 
-@keyframes blink {
+@keyframes caret-pulse {
   50% {
-    opacity: 0;
+    opacity: 0.2;
   }
 }
 
