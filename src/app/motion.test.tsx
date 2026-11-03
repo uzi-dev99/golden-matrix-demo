@@ -78,6 +78,13 @@ describe('motion layer (GMD-3)', () => {
     expect(block.match(/\.hero__panel\s*>\s*:nth-child\(/g)?.length ?? 0).toBeGreaterThanOrEqual(3);
   });
 
+  test('AC4 — the ambient motion of the app background lives in the no-preference block', () => {
+    const block = noPreferenceBlock();
+    // With reduced motion the background stays still: the drift is declared only where motion
+    // is allowed (the global check above already fails if any animation escapes the block).
+    expect(block).toMatch(/\.app-shell \.hero__media--ambient\s*\{[^}]*animation:/);
+  });
+
   test('AC1 — the app screens announce their entrance', () => {
     expect(renderToStaticMarkup(<AppHeader user="demo" />)).toContain('motion-rise');
     expect(renderToStaticMarkup(<HomePage />)).toContain('motion-rise');

@@ -99,4 +99,24 @@ describe('ReportPanel styles', () => {
     // Sora is loaded at 200/300/400: a 500 is faked by the browser.
     expect(moduleCss).not.toMatch(/font-weight:\s*500/);
   });
+
+  test('AC3 — the cards of the report are glass in the app screens: the background shows through', () => {
+    // These three cards used to paint the opaque ground of the app, which hid the animated
+    // background behind them. They carry the glass of the panels that surround them.
+    for (const card of ['promptView', 'waiting', 'steps']) {
+      const base = moduleCss.match(new RegExp(`\\.${card}\\s*\\{[^}]*\\}`))?.[0] ?? '';
+      expect(base).not.toBe('');
+      expect(base).not.toMatch(/background:\s*var\(--color-ground\)/);
+    }
+    const glass = moduleCss.match(/:global\(\.app-shell\)\s+\.promptView[^{]*\{[^}]*\}/)?.[0] ?? '';
+    expect(glass).not.toBe('');
+    expect(glass).toMatch(/background:\s*var\(--color-raised\)/);
+    expect(glass).toMatch(/backdrop-filter:\s*blur\([^)]*\)\s*saturate\(/);
+    expect(glass).toMatch(/border:\s*1px solid var\(--color-line\)/);
+    // The fill of the glass is the translucent token of the app, not an opaque colour.
+    const appShell = css.match(/\.app-shell\s*\{[^}]*\}/)?.[0] ?? '';
+    const raised = appShell.match(/--color-raised:\s*([^;]+);/)?.[1] ?? '';
+    expect(raised).toMatch(/rgba?\(/);
+    expect(parseFloat(raised.split(',')[3] ?? '1')).toBeLessThan(1);
+  });
 });

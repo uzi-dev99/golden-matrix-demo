@@ -1,9 +1,40 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import { describe, expect, test } from 'vitest';
+import { describe, expect, test, vi } from 'vitest';
+import { renderToStaticMarkup } from 'react-dom/server';
+import LoginPage from './login/page';
+
+vi.mock('next/navigation', () => ({ useRouter: () => ({ replace: vi.fn(), push: vi.fn(), refresh: vi.fn() }) }));
 
 const css = readFileSync(fileURLToPath(new URL('./globals.css', import.meta.url)), 'utf8');
 const printCss = readFileSync(fileURLToPath(new URL('./print/print.css', import.meta.url)), 'utf8');
+
+/** The element children of the first element with `class="className"` in a rendered markup. */
+function elementChildren(html: string, className: string): number {
+  const start = html.indexOf(`class="${className}"`);
+  if (start < 0) throw new Error(`no element with class ${className}`);
+  const tag = /<(\/?)([a-z][a-z0-9]*)([^>]*)>/gi;
+  tag.lastIndex = html.indexOf('>', start) + 1;
+  // The scan starts inside the element: its own tag is depth 1 and the walk stops at its closing
+  // tag, so a sibling that comes later is never counted as a child.
+  let depth = 1;
+  let count = 0;
+  let match: RegExpExecArray | null;
+  while ((match = tag.exec(html))) {
+    if (match[1] === '/') {
+      depth--;
+      if (depth === 0) break;
+      continue;
+    }
+    if (/\/\s*$/.test(match[3])) {
+      if (depth === 1) count++;
+      continue;
+    }
+    if (depth === 1) count++;
+    depth++;
+  }
+  return count;
+}
 
 /** The body of the first rule whose selector is exactly `selector` (the closing brace is on its own line). */
 function blockOf(selector: string): string {
@@ -119,6 +150,45 @@ describe('app identity (GMD-2)', () => {
     expect(css).not.toMatch(/^html\s*\{[^}]*color-scheme/m);
   });
 
+  test('AC3 — the panels of the app use the glass of the home: translucent fill, blur and a subtle border', () => {
+    const rule = css.match(/\.app-shell \.panel\s*\{[^}]*\}/)?.[0] ?? '';
+    expect(rule).not.toBe('');
+    // A translucent fill, so the background shows through.
+    expect(rule).toMatch(/background:\s*rgba\(255, 255, 255, 0\.\d+\)/);
+    // The blur of the home, with the saturation that keeps the colours alive.
+    expect(rule).toMatch(/backdrop-filter:\s*blur\([^)]*\)\s*saturate\(/);
+    expect(rule).toMatch(/border:\s*1px solid/);
+  });
+
+  test('AC1 — the app screens share the media of the hero: fixed behind the content, no pointer events', () => {
+    const rule = css.match(/\.app-shell \.hero__media--ambient\s*\{[^}]*\}/)?.[0] ?? '';
+    expect(rule).not.toBe('');
+    expect(rule).toMatch(/position:\s*fixed/);
+    expect(rule).toMatch(/inset:\s*0/);
+    // Dimmed, and it never eats the clicks of the app.
+    expect(rule).toMatch(/opacity:\s*0?\.\d+/);
+    expect(rule).toMatch(/pointer-events:\s*none/);
+    // The dark overlay that keeps the text legible over any frame.
+    const scrim = css.match(/\.app-shell \.hero__media--ambient::after\s*\{[^}]*\}/)?.[0] ?? '';
+    expect(scrim).not.toBe('');
+    expect(scrim).toMatch(/background:\s*rgba\(/);
+  });
+
+  test('AC3 — the ambient background keeps the body text at AA over the worst frame of the poster', () => {
+    const rule = css.match(/\.app-shell \.hero__media--ambient\s*\{[^}]*\}/)?.[0] ?? '';
+    const scrimText = css.match(/\.app-shell \.hero__media--ambient::after\s*\{[^}]*background:\s*([^;]+);/)?.[1] ?? '';
+    const opacity = Number(rule.match(/opacity:\s*([\d.]+)/)?.[1]);
+    expect(opacity).toBeGreaterThan(0);
+    const ground = over(token(scope, '--color-ground'), { r: 255, g: 255, b: 255 });
+    // Worst case: the poster at full brightness (white) under the scrim, the media layer at its
+    // opacity over the app ground, and the glass of the panel on top of that.
+    const media = over(paint(scrimText), { r: 255, g: 255, b: 255 });
+    const base = over({ ...media, a: opacity }, ground);
+    const panel = over(paint('rgba(255, 255, 255, 0.04)'), base);
+    const muted = over(token(scope, '--color-muted'), panel);
+    expect(contrast(muted, panel)).toBeGreaterThanOrEqual(4.5);
+  });
+
   test('AC8 — the picker icon of the dark app stays visible', () => {
     // With color-scheme: dark the browser draws the calendar icon light: inverting it would hide it.
     const rule = css.match(/\.app-shell input\[type='date'\][^{]*\{[^}]*\}/)?.[0] ?? '';
@@ -128,10 +198,21 @@ describe('app identity (GMD-2)', () => {
 });
 
 describe('login hero motion (GMD-3)', () => {
-  test('AC14 — the stagger of the panel has one rule per child', () => {
-    // The panel has four children (chip, title, tagline and the form).
+  test('AC14 — the child counter stops at the panel: a sibling that comes later is not a child', () => {
+    const markup =
+      '<div class="hero__panel"><p>a</p><p>b</p><p>c</p></div><div class="after"><a href="#">x</a></div>';
+    expect(elementChildren(markup, 'hero__panel')).toBe(3);
+  });
+
+  test('AC14 — the stagger of the panel has one rule per rendered child', async () => {
+    vi.stubEnv('DEMO_PASSWORD', 'astrolabio-demo');
+    const html = renderToStaticMarkup(await LoginPage());
+    vi.unstubAllEnvs();
+    // The panel has seven children (the chip, the title, the tagline and the form, a fragment of
+    // four blocks): the rules must be exactly one per rendered child, and no dead one.
+    const children = elementChildren(html, 'hero__panel');
     const rules = css.match(/\.hero__panel\s*>\s*:nth-child\(\d+\)\s*\{[^}]*\}/g) ?? [];
-    expect(rules.length).toBe(4);
+    expect(rules.length).toBe(children);
   });
 });
 

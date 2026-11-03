@@ -1,7 +1,6 @@
 /* Styles of the report panel (u3). The design tokens live in globals.css (u0). */
 
 .promptView {
-  background: var(--color-ground);
   border-radius: var(--radius-control);
   padding: 14px 16px;
   font: 400 13px/1.6 var(--font-mono);
@@ -173,7 +172,6 @@
   gap: 10px;
   padding: 14px 16px;
   margin-bottom: 14px;
-  background: var(--color-ground);
   border-radius: var(--radius-control);
   font-size: 14px;
 }
@@ -213,7 +211,6 @@
   padding: 12px 16px;
   display: grid;
   gap: 8px;
-  background: var(--color-ground);
   border-radius: var(--radius-control);
   font-size: 14px;
 }
@@ -311,4 +308,14 @@
 
 .crawl[data-typing]::-webkit-scrollbar {
   display: none;
+}
+
+/* The cards of the report are glass in the app screens (AC3): the animated background shows through
+   them, like the panels that surround them. Scoped to .app-shell, so /print is untouched. */
+:global(.app-shell) .promptView,
+:global(.app-shell) .waiting,
+:global(.app-shell) .steps {
+  background: var(--color-raised);
+  border: 1px solid var(--color-line);
+  backdrop-filter: blur(14px) saturate(140%);
 }

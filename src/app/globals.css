@@ -594,7 +594,22 @@ html:has(.app-shell) {
   background: rgba(255, 255, 255, 0.04);
   border: 1px solid var(--color-line);
   border-radius: 0;
-  backdrop-filter: blur(14px);
+  backdrop-filter: blur(14px) saturate(140%);
+}
+
+/* The media of the login hero, shared with the app screens: fixed behind the content, dimmed by
+   a dark scrim so the text stays legible over any frame of the video. It never eats a click. */
+.app-shell .hero__media--ambient {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  height: 100%;
+  opacity: 0.45;
+  pointer-events: none;
+}
+
+.app-shell .hero__media--ambient::after {
+  background: rgba(5, 5, 6, 0.6);
 }
 
 /* Type: Sora for the reading, JetBrains Mono for the labels. */
@@ -763,6 +778,17 @@ html:has(.app-shell)::-webkit-scrollbar-thumb,
   }
 }
 
+/* The ambient background of the app screens: a slow drift, so the ground is never static. */
+@keyframes ambient-drift {
+  from {
+    transform: scale(1.04);
+  }
+
+  to {
+    transform: scale(1.12);
+  }
+}
+
 @media (prefers-reduced-motion: no-preference) {
   /* The standard entrance: the screens and their cards arrive with a small stagger. */
   .motion-rise {
@@ -787,6 +813,9 @@ html:has(.app-shell)::-webkit-scrollbar-thumb,
   .hero__panel > :nth-child(2) { animation-delay: 240ms; }
   .hero__panel > :nth-child(3) { animation-delay: 300ms; }
   .hero__panel > :nth-child(4) { animation-delay: 360ms; }
+  .hero__panel > :nth-child(5) { animation-delay: 420ms; }
+  .hero__panel > :nth-child(6) { animation-delay: 480ms; }
+  .hero__panel > :nth-child(7) { animation-delay: 540ms; }
 
   /* The natal wheel: the planets pop in one by one, the aspects fade in as a layer over them. */
   .app-shell .wheel {
@@ -803,5 +832,10 @@ html:has(.app-shell)::-webkit-scrollbar-thumb,
   .app-shell .wheel [id$='-aspects'] > line {
     animation: motion-fade 600ms var(--ease-premium) both;
     animation-delay: 620ms;
+  }
+
+  /* The ambient background of the app screens drifts slowly behind the content. */
+  .app-shell .hero__media--ambient {
+    animation: ambient-drift 40s ease-in-out infinite alternate;
   }
 }
