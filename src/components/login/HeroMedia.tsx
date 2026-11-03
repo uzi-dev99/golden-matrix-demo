@@ -13,8 +13,9 @@ export function HeroMedia({ className }: { className?: string }) {
     >
       <video autoPlay muted loop playsInline preload="auto" poster={POSTER_URL} aria-hidden="true">
         {/* With reduced motion the browser skips this source: the mp4 is never downloaded. The
-            query is negated: an engine that does not know the feature evaluates it as false, and
-            the negation keeps the video there (the old gate left the hero with only the poster). */}
+            query is negated so it matches when the motion is not reduced. An engine that does not
+            know the feature resolves it to unknown, and unknown never matches: there the source
+            is skipped too and the hero keeps the poster. */}
         <source src={VIDEO_URL} type="video/mp4" media="not (prefers-reduced-motion: reduce)" />
       </video>
     </div>

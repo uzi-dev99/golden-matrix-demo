@@ -36,8 +36,9 @@ describe('login hero media', () => {
     vi.stubEnv('DEMO_PASSWORD', 'astrolabio-demo');
     const html = renderToStaticMarkup(await LoginPage());
     // The browser skips a source whose media query does not match: with reduced motion the
-    // 5.3 MB mp4 is never fetched (the poster paints the frame). The query is negated, so an
-    // engine that does not know the feature still gets the video.
+    // 5.3 MB mp4 is never fetched (the poster paints the frame). The query is negated so it
+    // matches when the motion is not reduced; an engine that does not know the feature resolves
+    // it to unknown, and unknown never matches: the source is skipped there too.
     expect(html).toMatch(/<source[^>]*media="not \(prefers-reduced-motion: reduce\)"/);
     expect(html).toContain(VIDEO_URL);
     // A src attribute on the video would be fetched whatever the motion preference is.

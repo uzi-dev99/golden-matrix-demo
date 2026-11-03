@@ -95,7 +95,7 @@ export function wrapPlanets(svg: SVGSVGElement): void {
  * gives them a depth in the browser. The groups keep their ids, so the motion layer still finds
  * the planets.
  */
-function splitWheelLayers(holder: HTMLElement): void {
+export function splitWheelLayers(holder: HTMLElement): void {
   const svg = holder.querySelector('svg');
   if (!svg) return;
   wrapPlanets(svg);
