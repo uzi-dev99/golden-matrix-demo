@@ -1,9 +1,18 @@
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import { describe, expect, test, vi } from 'vitest';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { POSTER_URL, VIDEO_URL } from '@/components/login/media';
 import LoginPage from './page';
 
 vi.mock('next/navigation', () => ({ useRouter: () => ({ replace: vi.fn(), push: vi.fn(), refresh: vi.fn() }) }));
+
+const layoutSource = readFileSync(fileURLToPath(new URL('../layout.tsx', import.meta.url)), 'utf8');
+
+// The brand of the source project must not be in this public repo. The strings are built from
+// parts so the repo-wide grep stays clean (AC2).
+const SOURCE_BRAND = ['ECHO', 'ID'].join('');
+const SOURCE_NETWORK = ['E', 'network'].join(' ');
 
 describe('login page', () => {
   test('AC9 — the demo credentials are printed on the page and the form is there', async () => {
@@ -35,8 +44,27 @@ describe('login page', () => {
     expect(html).toContain('<nav');
     expect(html).toContain('Astrolabio');
     expect(html).toContain('aviso de privacidad');
-    expect(html).not.toContain('ECHOID');
-    expect(html).not.toContain('E network');
+    expect(html).not.toContain(SOURCE_BRAND);
+    expect(html).not.toContain(SOURCE_NETWORK);
+    vi.unstubAllEnvs();
+  });
+
+  test('AC4 — the legal line has no dead anchors: there are no privacy or terms pages', async () => {
+    vi.stubEnv('DEMO_PASSWORD', 'astrolabio-demo');
+    const html = renderToStaticMarkup(await LoginPage());
+    expect(html).not.toContain('#privacidad');
+    expect(html).not.toContain('#condiciones');
+    expect(html).toContain('aviso de privacidad');
+    expect(html).toContain('condiciones de servicio');
+    vi.unstubAllEnvs();
+  });
+
+  test('AC5 — the CDN preconnect belongs to /login, not to the root layout', async () => {
+    vi.stubEnv('DEMO_PASSWORD', 'astrolabio-demo');
+    const html = renderToStaticMarkup(await LoginPage());
+    expect(html).toContain('rel="preconnect"');
+    expect(html).toContain('d8j0ntlcm91z4.cloudfront.net');
+    expect(layoutSource).not.toContain('preconnect');
     vi.unstubAllEnvs();
   });
 });

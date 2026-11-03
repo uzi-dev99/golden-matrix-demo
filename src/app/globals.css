@@ -473,17 +473,6 @@ body { font-family: var(--font-sans); font-size: 14px; line-height: 1.5; font-va
   line-height: 1.5;
 }
 
-.hero__legal a {
-  color: var(--text);
-  text-decoration: underline;
-  text-underline-offset: 3px;
-  text-decoration-thickness: 1px;
-}
-
-.hero__legal a:hover {
-  color: var(--text-dim);
-}
-
 /* Breakpoints */
 @media (max-width: 1100px) {
   .hero__panel {
@@ -590,6 +579,8 @@ body { font-family: var(--font-sans); font-size: 14px; line-height: 1.5; font-va
   color: var(--color-ink);
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
+  /* The native popups (date/time picker, select list) follow the scheme of the box they open in. */
+  color-scheme: dark;
 }
 
 /* The canvas behind the app screens. The print sheet and the login keep the light ground. */
@@ -675,7 +666,7 @@ html:has(.app-shell) {
 
 .app-shell input[type='date']::-webkit-calendar-picker-indicator,
 .app-shell input[type='time']::-webkit-calendar-picker-indicator {
-  filter: invert(1);
+  /* With color-scheme: dark the browser draws the icon light: inverting it would hide it. */
   opacity: 0.7;
 }
 
@@ -796,9 +787,6 @@ html:has(.app-shell)::-webkit-scrollbar-thumb,
   .hero__panel > :nth-child(2) { animation-delay: 240ms; }
   .hero__panel > :nth-child(3) { animation-delay: 300ms; }
   .hero__panel > :nth-child(4) { animation-delay: 360ms; }
-  .hero__panel > :nth-child(5) { animation-delay: 420ms; }
-  .hero__panel > :nth-child(6) { animation-delay: 480ms; }
-  .hero__panel > :nth-child(7) { animation-delay: 540ms; }
 
   /* The natal wheel: the planets pop in one by one, the aspects fade in as a layer over them. */
   .app-shell .wheel {

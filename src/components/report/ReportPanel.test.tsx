@@ -7,6 +7,24 @@ import { ReportMetaStrip } from './ReportPanel';
 
 const source = readFileSync(fileURLToPath(new URL('./ReportPanel.tsx', import.meta.url)), 'utf8');
 const css = readFileSync(fileURLToPath(new URL('../../app/globals.css', import.meta.url)), 'utf8');
+const moduleCss = readFileSync(fileURLToPath(new URL('./ReportPanel.module.css', import.meta.url)), 'utf8');
+
+/** Relative luminance of a #rrggbb colour. */
+function luminance(hex: string): number {
+  const n = parseInt(hex.replace('#', ''), 16);
+  const f = (v: number) => {
+    const c = v / 255;
+    return c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
+  };
+  return 0.2126 * f((n >> 16) & 255) + 0.7152 * f((n >> 8) & 255) + 0.0722 * f(n & 255);
+}
+
+/** Contrast ratio between two #rrggbb colours. */
+function contrast(a: string, b: string): number {
+  const l1 = luminance(a);
+  const l2 = luminance(b);
+  return (Math.max(l1, l2) + 0.05) / (Math.min(l1, l2) + 0.05);
+}
 
 const meta: ReportMeta = {
   model: 'openrouter/free',
@@ -61,5 +79,24 @@ describe('ReportMetaStrip', () => {
     // The panel has no DOM test library (no new dependency): the phase change is pinned in the source.
     expect(source).toMatch(/setError\(ev\.message\);\s*setPhase\('error'\);/);
     expect(source).toMatch(/const busy = phase === 'requesting' \|\| phase === 'streaming';/);
+  });
+});
+
+describe('ReportPanel styles', () => {
+  test('AC7 — the check of a finished step is a dark ink on the green of the step', () => {
+    const done = moduleCss.match(/\.step\[data-state='done'\] \.stepMark\s*\{[^}]*\}/)?.[0] ?? '';
+    const stroke = done.match(/stroke='%23([0-9a-f]{6})'/i)?.[1];
+    expect(stroke).toBeTruthy();
+    // The app scope paints the finished step with --color-ok.
+    const appShell = css.match(/\.app-shell\s*\{[^}]*\}/)?.[0] ?? '';
+    const ok = appShell.match(/--color-ok:\s*(#[0-9a-f]{6})/i)?.[1];
+    expect(ok).toBeTruthy();
+    // Non-text contrast: the check must reach 3:1 against the circle.
+    expect(contrast(`#${stroke}`, ok!)).toBeGreaterThanOrEqual(3);
+  });
+
+  test('AC9 — the components do not ask for a weight Sora does not load', () => {
+    // Sora is loaded at 200/300/400: a 500 is faked by the browser.
+    expect(moduleCss).not.toMatch(/font-weight:\s*500/);
   });
 });

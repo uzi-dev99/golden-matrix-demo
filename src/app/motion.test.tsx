@@ -29,7 +29,7 @@ function blockOf(source: string, header: string): string {
 
 /** The body of the `@media (prefers-reduced-motion: no-preference)` block, where the motion lives. */
 function noPreferenceBlock(): string {
-  return blockOf(css, '@media (prefers-reduced-motion: no-preference)');
+  return blockOf(plainCss, '@media (prefers-reduced-motion: no-preference)');
 }
 
 /** The body of a `@keyframes` block. */
@@ -59,11 +59,14 @@ describe('motion layer (GMD-3)', () => {
   test('AC2 — the entrances are declared only where motion is allowed', () => {
     // With reduced motion the browser must compute `animation-name: none`: the declarations live
     // inside a `prefers-reduced-motion: no-preference` block, so they are not applied at all.
+    // The longhand counts too: an `animation-name:` outside the block would run anyway.
     const block = noPreferenceBlock();
     expect(block).not.toBe('');
-    for (const match of css.matchAll(/animation:/g)) {
-      expect(match.index).toBeGreaterThan(css.indexOf('@media (prefers-reduced-motion: no-preference)'));
-      expect(match.index).toBeLessThan(css.indexOf('@media (prefers-reduced-motion: no-preference)') + block.length);
+    // The comments are not declarations: the check runs on the CSS without them.
+    const start = plainCss.indexOf('@media (prefers-reduced-motion: no-preference)');
+    for (const match of plainCss.matchAll(/animation(-name)?:/g)) {
+      expect(match.index).toBeGreaterThan(start);
+      expect(match.index).toBeLessThan(start + block.length);
     }
   });
 
@@ -93,5 +96,7 @@ describe('motion layer (GMD-3)', () => {
     expect(reportCss).toMatch(/\.reveal\[data-typing\][^{]*::after\s*\{[^}]*animation:/);
     const reduced = blockOf(reportCss, '@media (prefers-reduced-motion: reduce)');
     expect(reduced).toMatch(/animation:\s*none/);
+    // The module CSS switches its motion off with the shorthand, which resets the longhand too.
+    expect(reportCss).not.toMatch(/animation-name:/);
   });
 });

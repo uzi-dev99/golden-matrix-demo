@@ -1,7 +1,12 @@
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, test } from 'vitest';
 import { madridChart } from '@/components/shell/chart-fixture.test-utils';
+import { chartToFormedAspects } from './to-astrochart';
 import { DEFAULT_WHEEL_THEME, NatalWheel, WHEEL_PALETTES } from './NatalWheel';
+
+const source = readFileSync(fileURLToPath(new URL('./NatalWheel.tsx', import.meta.url)), 'utf8');
 
 /** Relative luminance of a #rrggbb colour: the drawing colours are plain hex. */
 function luminance(hex: string | undefined): number {
@@ -40,7 +45,27 @@ describe('NatalWheel', () => {
     // The house numbers 1-12 come from the library default (#000): on the dark wheel they were
     // invisible, so the dark palette sets them in light ink.
     expect(luminance(WHEEL_PALETTES.dark.CUSPS_FONT_COLOR)).toBeGreaterThan(0.4);
-    // The light palette leaves them alone: the print sheet keeps the library default.
-    expect(WHEEL_PALETTES.light.CUSPS_FONT_COLOR).toBeUndefined();
+    // The light palette sets them too: the library merges the settings into its module-level
+    // defaults, so a dark wheel drawn first would leak its colour into the next light one.
+    expect(WHEEL_PALETTES.light.CUSPS_FONT_COLOR).toBe('#000');
+  });
+
+  test('AC10 — the light palette pins the house numbers to the library default: a dark wheel cannot leak its ink', () => {
+    // The astrochart Chart constructor merges the settings into its module-level defaults, so the
+    // light palette has to set the house numbers itself. With the library default the printed
+    // wheel is byte-identical, and a dark wheel drawn first cannot leak its colour into it.
+    const lib = readFileSync(
+      fileURLToPath(new URL('../../../node_modules/@astrodraw/astrochart/dist/astrochart.js', import.meta.url)),
+      'utf8',
+    );
+    expect(lib).toMatch(/CUSPS_FONT_COLOR:"#000"/);
+    expect(WHEEL_PALETTES.light.CUSPS_FONT_COLOR).toBe('#000');
+  });
+
+  test('AC12 — the wheel passes its theme to the aspects', () => {
+    // The drawing happens in the browser (no DOM test library here): the wiring is pinned in
+    // the source, and the argument is what changes the colours.
+    expect(source).toMatch(/chartToFormedAspects\(\s*chart,\s*theme\s*\)/);
+    expect(chartToFormedAspects(madridChart)).not.toEqual(chartToFormedAspects(madridChart, 'dark'));
   });
 });

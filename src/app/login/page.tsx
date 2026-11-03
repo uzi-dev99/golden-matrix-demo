@@ -10,10 +10,16 @@ export default function LoginPage() {
 
   return (
     <main className="hero">
+      {/* The CDN is only used here: the hint belongs to the page that loads the media. */}
+      <link rel="preconnect" href="https://d8j0ntlcm91z4.cloudfront.net" />
+
       <HeroNav />
 
       <div className="hero__media" style={{ backgroundImage: `url(${POSTER_URL})` }}>
-        <video autoPlay muted loop playsInline preload="auto" poster={POSTER_URL} src={VIDEO_URL} aria-hidden="true" />
+        <video autoPlay muted loop playsInline preload="auto" poster={POSTER_URL} aria-hidden="true">
+          {/* With reduced motion the browser skips this source: the mp4 is never downloaded. */}
+          <source src={VIDEO_URL} type="video/mp4" media="(prefers-reduced-motion: no-preference)" />
+        </video>
       </div>
 
       <div className="hero__body">
@@ -26,8 +32,7 @@ export default function LoginPage() {
       </div>
 
       <footer className="hero__legal">
-        Entrar en la demo de Astrolabio implica que aceptas el{' '}
-        <a href="#privacidad">aviso de privacidad</a> y las <a href="#condiciones">condiciones de servicio</a>.
+        Entrar en la demo de Astrolabio implica que aceptas el aviso de privacidad y las condiciones de servicio.
       </footer>
     </main>
   );
