@@ -29,6 +29,48 @@ export function tiltDegrees(offset: number): number {
   return Math.max(-1, Math.min(1, offset)) * MAX_TILT_DEG;
 }
 
+/**
+ * The pointer tilt of the wheel: it writes the two CSS variables the motion layer reads. The box
+ * is read once per frame, not once per pointer event: the pointer moves faster than the screen
+ * refreshes and every read of the box forces the browser to recompute the layout.
+ */
+export function attachTilt(el: HTMLElement): () => void {
+  let frame = 0;
+  let pending: { clientX: number; clientY: number } | null = null;
+  const apply = () => {
+    frame = 0;
+    const event = pending;
+    pending = null;
+    if (!event) return;
+    const box = el.getBoundingClientRect();
+    // A wheel with no size yet (the page is still laying out) does not tilt.
+    if (!box.width || !box.height) return;
+    const x = ((event.clientX - box.left) / box.width) * 2 - 1;
+    const y = ((event.clientY - box.top) / box.height) * 2 - 1;
+    el.style.setProperty('--tilt-x', `${tiltDegrees(y)}deg`);
+    el.style.setProperty('--tilt-y', `${tiltDegrees(-x)}deg`);
+  };
+  const onMove = (event: PointerEvent) => {
+    pending = { clientX: event.clientX, clientY: event.clientY };
+    if (!frame) frame = requestAnimationFrame(apply);
+  };
+  // The wheel faces the viewer again when the pointer leaves it.
+  const onLeave = () => {
+    if (frame) cancelAnimationFrame(frame);
+    frame = 0;
+    pending = null;
+    el.style.setProperty('--tilt-x', '0deg');
+    el.style.setProperty('--tilt-y', '0deg');
+  };
+  el.addEventListener('pointermove', onMove);
+  el.addEventListener('pointerleave', onLeave);
+  return () => {
+    if (frame) cancelAnimationFrame(frame);
+    el.removeEventListener('pointermove', onMove);
+    el.removeEventListener('pointerleave', onLeave);
+  };
+}
+
 /** The wheel tilts only with a fine pointer on a hover-capable device, and never with reduced motion. */
 export function tiltEnabled(env: { hover: boolean; fine: boolean; reducedMotion: boolean }): boolean {
   return env.hover && env.fine && !env.reducedMotion;
@@ -40,7 +82,7 @@ export function tiltEnabled(env: { hover: boolean; fine: boolean; reducedMotion:
  * planet lands outside its ring. A wrapper with no transform of its own carries the animation, so
  * the planet keeps the place the library gave it.
  */
-function wrapPlanets(svg: SVGSVGElement): void {
+export function wrapPlanets(svg: SVGSVGElement): void {
   for (const planet of [...svg.querySelectorAll<SVGGElement>('[id$="-radix-planets"] > g')]) {
     const wrapper = document.createElementNS(svg.namespaceURI, 'g');
     planet.replaceWith(wrapper);
@@ -168,25 +210,7 @@ export function NatalWheel({
       fine: window.matchMedia('(pointer: fine)').matches,
       reducedMotion: window.matchMedia('(prefers-reduced-motion: reduce)').matches,
     })) return;
-    const onMove = (event: PointerEvent) => {
-      const box = el.getBoundingClientRect();
-      if (!box.width || !box.height) return;
-      const x = ((event.clientX - box.left) / box.width) * 2 - 1;
-      const y = ((event.clientY - box.top) / box.height) * 2 - 1;
-      el.style.setProperty('--tilt-x', `${tiltDegrees(y)}deg`);
-      el.style.setProperty('--tilt-y', `${tiltDegrees(-x)}deg`);
-    };
-    // The wheel faces the viewer again when the pointer leaves it.
-    const onLeave = () => {
-      el.style.setProperty('--tilt-x', '0deg');
-      el.style.setProperty('--tilt-y', '0deg');
-    };
-    el.addEventListener('pointermove', onMove);
-    el.addEventListener('pointerleave', onLeave);
-    return () => {
-      el.removeEventListener('pointermove', onMove);
-      el.removeEventListener('pointerleave', onLeave);
-    };
+    return attachTilt(el);
   }, []);
 
   return (

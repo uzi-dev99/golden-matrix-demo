@@ -765,9 +765,9 @@ html:has(.app-shell)::-webkit-scrollbar-thumb,
 @keyframes motion-pop {
   from {
     opacity: 0;
-    /* The library positions the planets with an SVG `transform` attribute: animating `transform`
-       here would replace it and the symbol would fly in from the corner. The independent `scale`
-       property composes with it, so the planet grows in place. */
+    /* The planets pop on the wrapper <g> that VK-526 puts around each one: the wrapper carries no
+       transform of its own, so the animation never replaces the one the library put on the planet.
+       The independent `scale` property never touches `transform` either. */
     scale: 0.85;
   }
 }

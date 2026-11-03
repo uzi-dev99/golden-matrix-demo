@@ -96,8 +96,15 @@ describe('ReportPanel styles', () => {
   });
 
   test('AC9 — the components do not ask for a weight Sora does not load', () => {
-    // Sora is loaded at 200/300/400: a 500 is faked by the browser.
-    expect(moduleCss).not.toMatch(/font-weight:\s*500/);
+    // Sora is loaded at 200/300/400: a 500 in a sans rule is faked by the browser. JetBrains Mono
+    // does load a 500, so a rule that uses the mono may ask for it.
+    const rules = moduleCss.match(/[^{}]+\{[^{}]*\}/g) ?? [];
+    expect(rules.length).toBeGreaterThan(0);
+    for (const rule of rules) {
+      const asksFor500 = /font-weight:\s*500/.test(rule) || /font:\s*500/.test(rule);
+      if (!asksFor500) continue;
+      expect(rule).toContain('var(--font-mono)');
+    }
   });
 
   test('AC3 — the cards of the report are glass in the app screens: the background shows through', () => {
