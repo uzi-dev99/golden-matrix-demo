@@ -3,10 +3,21 @@ import { fileURLToPath } from 'node:url';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, test } from 'vitest';
 import { madridChart } from '@/components/shell/chart-fixture.test-utils';
-import { chartToFormedAspects } from './to-astrochart';
-import { DEFAULT_WHEEL_THEME, NatalWheel, WHEEL_PALETTES } from './NatalWheel';
+import { ASPECT_COLOR_DARK, chartToFormedAspects } from './to-astrochart';
+import {
+  DEFAULT_WHEEL_THEME,
+  MAX_TILT_DEG,
+  NatalWheel,
+  tiltDegrees,
+  tiltEnabled,
+  WHEEL_LAYERS,
+  WHEEL_PALETTES,
+} from './NatalWheel';
 
 const source = readFileSync(fileURLToPath(new URL('./NatalWheel.tsx', import.meta.url)), 'utf8');
+const css = readFileSync(fileURLToPath(new URL('../../app/globals.css', import.meta.url)), 'utf8');
+// The comments are not declarations: they are removed before the CSS is parsed.
+const plainCss = css.replace(/\/\*[\s\S]*?\*\//g, '');
 
 /** Relative luminance of a #rrggbb colour: the drawing colours are plain hex. */
 function luminance(hex: string | undefined): number {
@@ -19,14 +30,39 @@ function luminance(hex: string | undefined): number {
   return 0.2126 * f((n >> 16) & 255) + 0.7152 * f((n >> 8) & 255) + 0.0722 * f(n & 255);
 }
 
+/** The contrast ratio of two colours (WCAG 2.x). */
+function contrast(a: string | undefined, b: string): number {
+  const l1 = luminance(a);
+  const l2 = luminance(b);
+  return (Math.max(l1, l2) + 0.05) / (Math.min(l1, l2) + 0.05);
+}
+
+/** The body of the media query that opens with `condition`, up to its closing brace. */
+function mediaBlock(source: string, condition: string): string {
+  const start = source.indexOf(`@media ${condition}`);
+  if (start < 0) return '';
+  let depth = 0;
+  for (let i = source.indexOf('{', start); i < source.length; i++) {
+    if (source[i] === '{') depth++;
+    else if (source[i] === '}' && --depth === 0) return source.slice(start, i + 1);
+  }
+  return '';
+}
+
+/** The depth the CSS gives to a layer, in pixels. */
+function depthOf(layer: string): number {
+  const found = plainCss.match(new RegExp(`\\[data-layer='${layer}'\\][^{]*\\{[^}]*--depth:\\s*(\\d+)px`));
+  return found ? Number(found[1]) : 0;
+}
+
 describe('NatalWheel', () => {
   test('AC9 — the wheel scales with its container instead of a fixed pixel width', () => {
     const html = renderToStaticMarkup(<NatalWheel chart={madridChart} size={480} />);
     // The drawing box caps the width; the svg follows the container (a 390 px screen fits).
     expect(html).toContain('max-width:480px');
     const classes = html.replaceAll('&amp;', '&').replaceAll('&gt;', '>');
-    expect(classes).toContain('[&>svg]:w-full');
-    expect(classes).toContain('[&>svg]:h-auto');
+    expect(classes).toContain('[&_svg]:w-full');
+    expect(classes).toContain('[&_svg]:h-auto');
   });
 
   test('AC9 — the wheel keeps its square shape', () => {
@@ -67,5 +103,98 @@ describe('NatalWheel', () => {
     // the source, and the argument is what changes the colours.
     expect(source).toMatch(/chartToFormedAspects\(\s*chart,\s*theme\s*\)/);
     expect(chartToFormedAspects(madridChart)).not.toEqual(chartToFormedAspects(madridChart, 'dark'));
+  });
+});
+
+describe('NatalWheel in 3D (VK-526)', () => {
+  test('AC1 — the pointer tilt never goes past 12 degrees', () => {
+    expect(MAX_TILT_DEG).toBe(12);
+    expect(tiltDegrees(0)).toBe(0);
+    expect(tiltDegrees(0.5)).toBe(6);
+    expect(tiltDegrees(2)).toBe(12);
+    expect(tiltDegrees(-2)).toBe(-12);
+    // The offset is clamped, so a pointer outside the box cannot tip the wheel over.
+    expect(Math.abs(tiltDegrees(99))).toBeLessThanOrEqual(MAX_TILT_DEG);
+  });
+
+  test('AC1/AC3 — the tilt needs a fine pointer on a hover device, and never with reduced motion', () => {
+    expect(tiltEnabled({ hover: true, fine: true, reducedMotion: false })).toBe(true);
+    expect(tiltEnabled({ hover: false, fine: true, reducedMotion: false })).toBe(false);
+    expect(tiltEnabled({ hover: true, fine: false, reducedMotion: false })).toBe(false);
+    expect(tiltEnabled({ hover: true, fine: true, reducedMotion: true })).toBe(false);
+  });
+
+  test('AC1 — the wheel is split into the sign ring, the house ring and the planets', () => {
+    expect(WHEEL_LAYERS.map((layer) => layer.name)).toEqual(['signs', 'houses', 'planets']);
+    // The aspects are not a layer: they stay on the base plane.
+    expect(WHEEL_LAYERS.flatMap((layer) => layer.groups).some((group) => group.includes('aspects'))).toBe(false);
+    // The groups are the ones the library really draws (its settings name the rings).
+    const lib = readFileSync(
+      fileURLToPath(new URL('../../../node_modules/@astrodraw/astrochart/dist/astrochart.js', import.meta.url)),
+      'utf8',
+    );
+    expect(lib).toMatch(/ID_SIGNS:"signs"/);
+    expect(lib).toMatch(/ID_CUSPS:"cusps"/);
+    expect(lib).toMatch(/ID_POINTS:"planets"/);
+    expect(WHEEL_LAYERS.flatMap((layer) => layer.groups)).toEqual([
+      '-radix-signs',
+      '-radix-cusps',
+      '-radix-axis',
+      '-radix-planets',
+    ]);
+  });
+
+  test('AC1 — every layer has its depth, from the back of the wheel to the front', () => {
+    expect(depthOf('signs')).toBeGreaterThan(0);
+    expect(depthOf('houses')).toBeGreaterThan(depthOf('signs'));
+    expect(depthOf('planets')).toBeGreaterThan(depthOf('houses'));
+    // The layers are pushed in Z inside the perspective box.
+    expect(plainCss).toMatch(/translateZ\(var\(--depth/);
+    // The aspects stay on the base plane: they are never pushed in Z.
+    expect(plainCss).not.toMatch(/aspects[^{]*\{[^}]*translateZ/);
+  });
+
+  test('AC1/AC3 — the depth and the tilt live in the fine-pointer block', () => {
+    const block = mediaBlock(plainCss, '(hover: hover) and (pointer: fine) and (prefers-reduced-motion: no-preference)');
+    expect(block).not.toBe('');
+    expect(block).toMatch(/perspective:/);
+    expect(block).toMatch(/translateZ\(/);
+    expect(block).toMatch(/rotateX\(/);
+    expect(block).toMatch(/rotateY\(/);
+  });
+
+  test('AC3 — the reduced motion keeps the wheel flat and still', () => {
+    // The 3D block asks for no-preference: with reduced motion it never applies, so the wheel
+    // stays flat (no perspective, no tilt).
+    expect(mediaBlock(plainCss, '(prefers-reduced-motion: no-preference)')).toMatch(/prefers-reduced-motion/);
+    // The entrance rotation is declared where motion is allowed.
+    const motion = mediaBlock(plainCss, '(prefers-reduced-motion: no-preference)');
+    expect(motion).toMatch(/wheel-enter/);
+    expect(plainCss).toMatch(/@keyframes wheel-enter\s*\{[^}]*transform:/);
+  });
+
+  test('AC1 — the pointer moves the wheel', () => {
+    // The drawing happens in the browser (no DOM test library here): the wiring is pinned in
+    // the source, and the clamp is the tested function.
+    expect(source).toMatch(/addEventListener\('pointermove'/);
+    expect(source).toMatch(/--tilt-x/);
+    expect(source).toMatch(/tiltEnabled\(/);
+  });
+
+  test('AC2 — on the worst-case panel the aspects read at 3:1 and the house numbers at 4.5:1', () => {
+    // The panel behind the wheel can be as light as #3a3a3b (card 525).
+    const panel = '#3a3a3b';
+    for (const [name, color] of Object.entries(ASPECT_COLOR_DARK)) {
+      expect(contrast(color, panel), name).toBeGreaterThanOrEqual(3);
+    }
+    expect(contrast(WHEEL_PALETTES.dark.CUSPS_FONT_COLOR, panel)).toBeGreaterThanOrEqual(4.5);
+  });
+
+  test('AC4 — the print sheet keeps the flat wheel', () => {
+    const html = renderToStaticMarkup(<NatalWheel chart={madridChart} size={560} />);
+    expect(html).toContain('data-theme="light"');
+    // Only the dark theme is split into layers: the print sheet draws the same flat wheel.
+    expect(source).toMatch(/theme === 'dark'/);
+    expect(plainCss).toMatch(/\[data-theme='dark'\]/);
   });
 });
