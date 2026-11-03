@@ -48,7 +48,7 @@ export default function ResultPage() {
 
   if (error) {
     return (
-      <main className="panel my-6 grid gap-3">
+      <main className="panel motion-rise my-6 grid gap-3">
         <p className="error-text" role="alert">
           {error}
         </p>
@@ -61,14 +61,14 @@ export default function ResultPage() {
 
   if (!chart || !input) {
     return (
-      <main className="panel my-6">
+      <main className="panel motion-rise my-6">
         <p>Calculando la carta…</p>
       </main>
     );
   }
 
   return (
-    <main className="py-6">
+    <main className="motion-rise py-6" style={{ '--motion-delay': '80ms' } as React.CSSProperties}>
       <ResultsView input={input} chart={chart} />
     </main>
   );

@@ -84,6 +84,8 @@ export function NatalWheel({
       el.replaceChildren(); // StrictMode runs the effect twice; draw once
       const paper = new Chart(`wheel-${reactId}`, size, size, WHEEL_PALETTES[theme]);
       paper.radix(chartToRadixData(chart)).aspects(chartToFormedAspects(chart, theme));
+      // The planets pop in one by one: the CSS reads the index of each symbol from --i.
+      el.querySelectorAll<SVGGElement>('[id$="-radix-planets"] > g').forEach((g, i) => g.style.setProperty('--i', String(i)));
     })();
     return () => {
       cancelled = true;
@@ -97,7 +99,7 @@ export function NatalWheel({
       ref={holder}
       role="img"
       aria-label={`Carta natal de ${chart.input.name}: Sol en ${chart.sun?.signEs}, Luna en ${chart.moon?.signEs}, Ascendente en ${chart.ascendant.signEs}`}
-      className="mx-auto aspect-square w-full [&>svg]:h-auto [&>svg]:w-full"
+      className="wheel mx-auto aspect-square w-full [&>svg]:h-auto [&>svg]:w-full"
       style={{ maxWidth: size }}
     />
   );

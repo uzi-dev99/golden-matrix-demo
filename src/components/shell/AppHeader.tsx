@@ -15,7 +15,7 @@ export function AppHeader({ user }: { user: string }) {
   }
 
   return (
-    <header className="flex items-center justify-between gap-4 border-b border-line py-3">
+    <header className="motion-rise flex items-center justify-between gap-4 border-b border-line py-3">
       <Link href="/" className="flex items-center gap-2 text-ink no-underline">
         <Mark />
         <span className="text-[15px] font-light tracking-[0.16em]">Astrolabio</span>

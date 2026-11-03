@@ -89,7 +89,13 @@ export function BirthForm() {
       </p>
 
       <div className="grid gap-4 lg:grid-cols-[5fr_7fr]">
-        <form className="panel grid content-start gap-4" onSubmit={submit} aria-label="Formulario de nacimiento" noValidate>
+        <form
+          className="panel motion-rise grid content-start gap-4"
+          style={{ '--motion-delay': '160ms' } as React.CSSProperties}
+          onSubmit={submit}
+          aria-label="Formulario de nacimiento"
+          noValidate
+        >
           <div className="field">
             <label htmlFor="nombre">Nombre</label>
             <input id="nombre" className="input" value={name} autoComplete="off" onChange={(e) => setName(e.target.value)} />
@@ -135,7 +141,11 @@ export function BirthForm() {
           </button>
         </form>
 
-        <section className="panel overflow-hidden" aria-label="Mapa">
+        <section
+          className="panel motion-rise overflow-hidden"
+          style={{ '--motion-delay': '240ms' } as React.CSSProperties}
+          aria-label="Mapa"
+        >
           <div className="h-[260px] lg:h-[560px]">
             {place ? (
               <LocationMap latitude={place.latitude} longitude={place.longitude} onChange={onMapChange} />
