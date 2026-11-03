@@ -789,6 +789,17 @@ html:has(.app-shell)::-webkit-scrollbar-thumb,
   }
 }
 
+/* The wheel arrives with a short rotation: the depth reads before the pointer moves. */
+@keyframes wheel-enter {
+  from {
+    transform: rotateX(-14deg) rotateY(8deg);
+  }
+
+  to {
+    transform: rotateX(0deg) rotateY(0deg);
+  }
+}
+
 @media (prefers-reduced-motion: no-preference) {
   /* The standard entrance: the screens and their cards arrive with a small stagger. */
   .motion-rise {
@@ -837,5 +848,52 @@ html:has(.app-shell)::-webkit-scrollbar-thumb,
   /* The ambient background of the app screens drifts slowly behind the content. */
   .app-shell .hero__media--ambient {
     animation: ambient-drift 40s ease-in-out infinite alternate;
+  }
+
+  /* The wheel of the app screens arrives with a short rotation. */
+  @media (hover: hover) and (pointer: fine) {
+    .app-shell .wheel[data-theme='dark'] .wheel__tilt {
+      animation: wheel-enter 900ms var(--ease-premium) backwards;
+    }
+  }
+}
+
+/* ------------------------------------------------------------------------------------------------
+   The natal wheel in 3D (VK-526). CSS 3D, no dependency: the drawing sits in a perspective box
+   and every ring floats at its own depth. The aspects stay on the base plane, on z=0.
+   The tilt follows the pointer only with a fine pointer on a hover-capable device, and never with
+   reduced motion: then the wheel stays flat and still, and so does the print sheet.
+------------------------------------------------------------------------------------------------- */
+
+/* The rings of the wheel are drawn as layers stacked on the base one. */
+.wheel__tilt {
+  position: relative;
+}
+
+.wheel .wheel__layer {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+/* The depth of each layer, from the back of the wheel to the front. */
+.wheel__layer[data-layer='signs'] { --depth: 14px; }
+.wheel__layer[data-layer='houses'] { --depth: 24px; }
+.wheel__layer[data-layer='planets'] { --depth: 38px; }
+
+@media (hover: hover) and (pointer: fine) and (prefers-reduced-motion: no-preference) {
+  .app-shell .wheel[data-theme='dark'] {
+    perspective: 1100px;
+    transform-style: preserve-3d;
+  }
+
+  .app-shell .wheel[data-theme='dark'] .wheel__tilt {
+    transform: rotateX(var(--tilt-x, 0deg)) rotateY(var(--tilt-y, 0deg));
+    transform-style: preserve-3d;
+  }
+
+  .app-shell .wheel[data-theme='dark'] .wheel__layer {
+    transform: translateZ(var(--depth, 0px));
   }
 }
