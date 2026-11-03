@@ -9,6 +9,7 @@ import {
   DEFAULT_WHEEL_THEME,
   MAX_TILT_DEG,
   NatalWheel,
+  splitWheelLayers,
   tiltDegrees,
   tiltEnabled,
   WHEEL_LAYERS,
@@ -108,11 +109,14 @@ type FakeNode = {
   attrs: Record<string, string>;
   children: FakeNode[];
   parent: FakeNode | null;
+  style: { position: string };
   appendChild(child: FakeNode): void;
   replaceWith(next: FakeNode): void;
   setAttribute(name: string, value: string): void;
   getAttribute(name: string): string | null;
+  querySelector(selector: string): FakeNode | null;
   querySelectorAll(selector: string): FakeNode[];
+  cloneNode(): FakeNode;
 };
 
 function fakeNode(tag: string, id = ''): FakeNode {
@@ -123,6 +127,7 @@ function fakeNode(tag: string, id = ''): FakeNode {
     attrs: {},
     children: [],
     parent: null,
+    style: { position: '' },
     appendChild(child) {
       child.parent = node;
       node.children.push(child);
@@ -140,11 +145,25 @@ function fakeNode(tag: string, id = ''): FakeNode {
     getAttribute(name) {
       return node.attrs[name] ?? null;
     },
+    querySelector(selector) {
+      // The library draws each ring as a group whose id ends with the name of the ring.
+      const suffix = selector.match(/^g\[id\$="(.+)"\]$/)?.[1];
+      if (suffix) {
+        return node.children.find((child) => child.tag === 'g' && child.id.endsWith(suffix)) ?? null;
+      }
+      if (selector === 'svg') return node.children.find((child) => child.tag === 'svg') ?? null;
+      return null;
+    },
     querySelectorAll(selector) {
       // The library draws the planets in a group whose id ends with "-radix-planets".
       if (!selector.includes('-radix-planets')) return [];
       const group = node.children.find((child) => child.id.endsWith('-radix-planets'));
       return group ? group.children : [];
+    },
+    cloneNode() {
+      const copy = fakeNode(node.tag, node.id);
+      copy.attrs = { ...node.attrs };
+      return copy;
     },
   };
   return node;
@@ -260,6 +279,15 @@ describe('NatalWheel in 3D (VK-526)', () => {
     expect(block).toMatch(/rotateY\(/);
   });
 
+  test('AC1/AC3 — the tilt transform is declared once, inside the fine-pointer block', () => {
+    const block = mediaBlock(plainCss, '(hover: hover) and (pointer: fine) and (prefers-reduced-motion: no-preference)');
+    const tilt = 'rotateX(var(--tilt-x';
+    // The tilt reads the pointer variables, so it is declared once and only inside that block:
+    // outside it the wheel would tilt on a touch screen and with the motion reduced.
+    expect(plainCss.split(tilt).length - 1).toBe(1);
+    expect(block).toContain(tilt);
+  });
+
   test('AC3 — the reduced motion keeps the wheel flat and still', () => {
     // The 3D block asks for no-preference: with reduced motion it never applies, so the wheel
     // stays flat (no perspective, no tilt).
@@ -342,6 +370,31 @@ describe('the pointer tilt (VK-535)', () => {
 
 describe('the planet wrapper (VK-526)', () => {
   afterEach(() => vi.unstubAllGlobals());
+
+  test('the layered output keeps the planets in place: the wrapper is inside the layer', () => {
+    const holder = fakeNode('div');
+    const svg = fakeNode('svg');
+    for (const id of ['chart-radix-signs', 'chart-radix-cusps', 'chart-radix-axis']) {
+      svg.appendChild(fakeNode('g', id));
+    }
+    const planets = fakeNode('g', 'chart-radix-planets');
+    const sun = fakeNode('g', 'planet-sun');
+    sun.setAttribute('transform', 'translate(120, 240)');
+    planets.appendChild(sun);
+    svg.appendChild(planets);
+    holder.appendChild(svg);
+    vi.stubGlobal('document', { createElementNS: (_ns: string, tag: string) => fakeNode(tag) });
+    splitWheelLayers(holder as unknown as HTMLElement);
+    // The planets are in their own layer and each one sits inside a wrapper without a transform:
+    // the layer is what the motion layer grows, so the planet keeps the place the library gave it.
+    const layer = holder.children.find((child) => child.attrs['data-layer'] === 'planets');
+    expect(layer).toBeDefined();
+    expect(layer?.children).toContain(planets);
+    expect(planets.children.length).toBe(1);
+    const wrapper = planets.children[0];
+    expect(wrapper.getAttribute('transform')).toBeNull();
+    expect(wrapper.children[0]).toBe(sun);
+  });
 
   test('the planet keeps its place: the animation runs on a wrapper without transform', () => {
     const svg = fakeNode('svg');
