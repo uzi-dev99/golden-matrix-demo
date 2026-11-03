@@ -67,4 +67,11 @@ describe('login page', () => {
     expect(layoutSource).not.toContain('preconnect');
     vi.unstubAllEnvs();
   });
+
+  test('AC1 — the login page carries exactly one video element', async () => {
+    vi.stubEnv('DEMO_PASSWORD', 'astrolabio-demo');
+    const html = renderToStaticMarkup(await LoginPage());
+    expect(html.match(/<video/g)?.length).toBe(1);
+    vi.unstubAllEnvs();
+  });
 });

@@ -1,6 +1,6 @@
 import { LoginForm } from '@/components/form/LoginForm';
+import { HeroMedia } from '@/components/login/HeroMedia';
 import { HeroNav } from '@/components/login/HeroNav';
-import { POSTER_URL, VIDEO_URL } from '@/components/login/media';
 import { demoCredentials } from '@/lib/config';
 
 export const dynamic = 'force-dynamic';
@@ -15,12 +15,7 @@ export default function LoginPage() {
 
       <HeroNav />
 
-      <div className="hero__media" style={{ backgroundImage: `url(${POSTER_URL})` }}>
-        <video autoPlay muted loop playsInline preload="auto" poster={POSTER_URL} aria-hidden="true">
-          {/* With reduced motion the browser skips this source: the mp4 is never downloaded. */}
-          <source src={VIDEO_URL} type="video/mp4" media="(prefers-reduced-motion: no-preference)" />
-        </video>
-      </div>
+      <HeroMedia />
 
       <div className="hero__body">
         <div className="hero__panel" id="entrar">
